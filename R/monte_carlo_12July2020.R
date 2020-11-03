@@ -1,3 +1,10 @@
+######################################################################
+#
+#  CLAD WG-2 -- estimating uncertainty -- Monte Carlo parameter resampling
+#
+#    Rob Smith, phytomosaic@gmail.com, 12 July 2020
+#
+##      GNU General Public License, Version 3.0    ###################
 
 
 ### Root/Nelson CL models -- Lichen species richness vs Nitrogen
@@ -14,8 +21,7 @@ require(quantreg)
 # m <- dd$megadbid  ;  rm(dd)# keep exact same plots Peter used???
 
 ### load MEGADB data
-d <- read.csv('C:/Users/Rob/Documents/_prj/1_orise/wildstew/data_raw/MegaDbPLOT_2020.05.09.csv',
-              stringsAsFactors=F)
+d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
 
 # ### Peter's used N from calibration equation
 # set_par_mercury(6)
@@ -101,7 +107,7 @@ names(sr_decline) <- v                # clean up names
 ndep <- seq(0.1,30,by=0.01)           # sequence of possible N dep
 # fit and CI across WHOLE range of N (can bootstrap CIs instead)
 ci <- data.frame(predict(m, data.frame(N=ndep),
-                         type='none', 
+                         type='none',
                          interval='confidence',
                          level=0.95))
 # index NDEP where species decline (nearly) matches fitted/lwr/upr
