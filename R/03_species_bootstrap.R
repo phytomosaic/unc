@@ -39,18 +39,16 @@ s  <- s[,c('megadbid','sci_22chklst','fia_abun',
 s$sci_22chklst <- clean_text(s$sci_22chklst, TRUE)
 
 ### get species ratings ('peak detection frequency' for N or S)
-###    this comes from HTR's 2018 spline regressions
+###   this comes from HTR's 2018 spline regressions
 wa <- s[!duplicated(s$sci_22chklst),
         c('sci_22chklst','n_depmaxfreq','s_depmaxfreq')]
 wa <- wa[order(wa$sci_22chklst),]
 
 ### reshape wide for abundance matrix
 spe <- labdsv::matrify(s[,c('megadbid','sci_22chklst','fia_abun')])
-identical(wa$sci_22chklst, dimnames(spe)[[2]]) # expect TRUE
-rm(s)
 
 ### convert spe to trait (ratings to be sampled)
-x <- spe
+x <- spe                                   # duplicate
 x[x > 0 ] <- 1                             # convert to binary
 x <- sweep(x, 2, wa$n_depmaxfreq, '*')     # nitrogen ratings
 # x <- sweep(x, 2, wa$s_depmaxfreq, '*')   # sulfur ratings
@@ -58,52 +56,56 @@ x[is.na(x)] <- 0L    # zero out any NA (species that lacked ratings)
 j   <- colSums(x)==0 # 287 spp lacking valid spp ratings
 spe <- spe[,!j]
 x   <-   x[,!j]
-sr  <- apply(x, 1, function(x) sum(x>0))
-i   <- sr < 4        # 1706 species-poor sites (< 4 rated species)
+i   <- apply(x, 1, function(x) sum(x>0)) < 4 # species-poor (< 4 rated species)
 spe <- spe[!i,]
 x   <-   x[!i,]
-rm(i,j,wa)
 x   <- as.matrix(x)
 
-### some summary statistics
-scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore
-sr <- apply(x, 1, function(x) sum(x>0))          # obs richness of RATED spp
-ecole::set_par_mercury(2)
-hist(scr_obs, breaks=seq(0, max(scr_obs), len=44), xlab='Observed airscore')
-hist(sr, breaks=seq(0, max(sr), len=44), xlab='Rated species richness')
-
-### some descriptive data (CMAQ and original airscores)
+### get descriptive data (CMAQ and original airscores)
 d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
-names(d)  <- clean_text(names(d), lower=T)
-i         <- match(dimnames(x)[[1]], d$megadbid)
-naq       <- d$cmaq_n_3yroll[i]
-saq       <- d$cmaq_s_3yroll[i]
-nairscore <- d$n_airscore[i]
-sairscore <- d$s_airscore[i]
-mat       <- d$ubc_mat[i]
-lon       <- d$longusenad83[i]
-lat       <- d$latusenad83[i]
-lon[lat > 49.01] <- NA
-lat[lat > 49.01] <- NA
-rm(d)
+names(d) <- ecole::clean_text(names(d), lower=T)
+d <- d[!(duplicated(d$megadbid)),]      # (!) one megadbid was duplicated
+d$megadbid  <- as.character(d$megadbid)
+rownames(d) <- d$megadbid
+d[,c('latusedd','longusedd')] <- NULL   # kill bad columns
+names(d)[names(d) %in% c('latusenad83','longusenad83')] <- c('lat','lon')
+d <- d[,c('lon','lat', names(d)[!names(d) %in% c('lon','lat')])] # reorder cols
+d <- d[!(is.na(d$lon) | is.na(d$lat)),] # keep only non-NA coords
+d <- d[!(d$lat>49.5 & d$lat < 50),]     # rm one invalid location in Canada
+d <- d[!(d$lon > (-75) & d$lat < 38),]  # rm one invalid location in Atlantic
+is_ak <- d$lat > 50    # assign Alaska data where none exist
+d$cmaq_n_3yroll[is_ak] <- d$n_lich_kghay[is_ak]
+d$cmaq_n_3yroll[is_ak & is.na(d$cmaq_n_3yroll)] <- 1.5
+d$cmaq_s_3yroll[is_ak] <- 1.5
+d$ubc_mwmt[d$ubc_mwmt < (-999)] <- NA
+d$meanmaxaugt5y_c[is_ak] <- d$ubc_mwmt[is_ak]
+d$ubc_map[d$ubc_map < 0] <- NA
+d$meanppt5y_cm[is_ak]    <- d$ubc_map[is_ak]
+inm <- intersect(dimnames(x)[[1]], d$megadbid)
+spe <- spe[dimnames(spe)[[1]] %in% inm, ]
+x   <- x[dimnames(x)[[1]] %in% inm, ]
+d   <- d[d$megadbid %in% inm, ]
+spe <- spe[order(dimnames(spe)[[1]]), ]
+x   <- x[order(dimnames(x)[[1]]),]
+d   <- d[order(d$megadbid),]
+i   <- which(!is.na(d$cmaq_n_3yroll)) # omit if lacking CMAQ values
+spe <- spe[i, ] # omit if lacking CMAQ values
+x   <- x[i,]    # omit if lacking CMAQ values
+d   <- d[i,]    # omit if lacking CMAQ values
 
-### CHOICE -- dont plot cases that lack CMAQ info?...
-isna      <- is.na(naq)
-naq       <- naq[!isna]
-saq       <- saq[!isna]
-nairscore <- nairscore[!isna]
-sairscore <- sairscore[!isna]
-scr_obs   <- scr_obs[!isna]
-sr        <- sr[!isna]
-lat       <- lat[!isna]
-lon       <- lon[!isna]
-mat       <- mat[!isna]
+### checks
+identical(dimnames(spe)[[1]], d$megadbid) # expect TRUE
+identical(dimnames(x)[[1]], d$megadbid)   # expect TRUE
+dim(d)   # 8875 sites, descriptor matrix
+dim(spe) # 8875 sites, species abundance matrix
+dim(x)   # 8875 sites, species ratings 'traits' matrix
+d$scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore (this way)
+d$sr      <- apply(x, 1, function(i) sum(i>0))     # obs richness of RATED spp
+rm(i, j, s, wa, inm, is_ak) # cleanup
 
-# ### get climate adjusted airscores
-# load('./data/d.rda')
-# nadj      <- d$nadj[match(dimnames(x)[[1]], d$megadbid)]
-# nadj      <- nadj[!isna]
-# rm(d)
+
+
+
 
 # ######################################################################
 #    #### unwrap me at your peril...   ###################
@@ -113,23 +115,27 @@ mat       <- mat[!isna]
 # ###      with probability equal to species abundances in spe;
 # ###   airscore = mean of these randomly sampled trait values
 # ###      (inherently community-weighted by probabilities)
-# `bootscr` <- function(x, i, B=999) {
-#     x    <- x[i, ]      # subset row
-#     pr   <- spe[i,] / sum(spe[i,]) # probabilities per row
-#     # B    <- 999         # number of bootstrap draws per row
-#     n    <- sum(pr > 0) # sample size = observed richness
-#     res  <- replicate(B, mean(sample(x,size=n,replace=T,prob=pr)))
-#     res # the bootstrapped airscores
+# `boot_airscore` <- function(x, i, B=999) {
+#     x    <- x[i, ]                 # subset row of species ratings (traits)
+#     pr   <- spe[i,] / sum(spe[i,]) # species occ probabilities per row
+#     n    <- sum(pr > 0)            # sample size = observed richness
+#     res  <- replicate(B, mean(sample(x, size=n, replace=T, prob=pr)))
+#     res                            # the bootstrapped airscores
 # }
 # ### ! ! ! TIMEWARN ! ! ! 10 min for 8927 plots (346 spp)
 # cat(paste0('start time: ', time_start <- Sys.time()), '\n')
-# b_scr <- sapply(1:NROW(spe), FUN=bootscr, x=x, simplify='array')
+# b_scr <- sapply(1:NROW(spe), FUN=boot_airscore, x=x, simplify='array')
 # dimnames(b_scr)[[2]] <- dimnames(spe)[[1]]
 # cat(paste0('time elapsed: ', Sys.time()-time_start), '\n')
 # save(b_scr, file='./res/b_scr.rda')
 # ######################################################################
 # ######################################################################
 # ######################################################################
+
+
+
+
+
 
 ### load bootstraps and calc bootstrapped 95% CI for site scores
 load(file='./res/b_scr.rda', verbose=T)
@@ -147,10 +153,10 @@ ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
         '#F67D4A', '#F26943','#E85A47', '#DE4B4B', '#D33C4E', '#C1284A',
         '#AF1446', '#9E0142', rep('transparent',2))
 `map_it` <- function(x, pal=ca, ...) {
-  plot(lon, lat, type='n', asp=1.6, ylim=c(30,49),
+  plot(d$lon, d$lat, type='n', asp=1.6, ylim=c(30,49),
        ylab='', xlab='', ...)
   maps::map('usa', fill=T, col='white', add=T)
-  points(lon, lat, pch=16, cex=0.5, col=colvec(x, pal=ca))
+  points(d$lon, d$lat, pch=16, cex=0.5, col=colvec(x, pal=ca))
   maps::map('state', add=T, lwd=0.5, col='#00000050')
   `colorbar` <- function(x, main='', pal, ...) {
     ppar <- par('plt')
@@ -200,18 +206,18 @@ dev.off()
 png('./fig/fig_00_diagnostics.png',
     wid=12, hei=8, uni='in', res=700, bg='transparent')
 set_par_mercury(6)
-ca <- colvec(naq, alpha=0.9)
-plot(jitter(sr, factor=2),  scr_obs, col=ca, xlim=c(0,40),
+ca <- colvec(d$cmaq_n_3yroll, alpha=0.9)
+plot(jitter(d$sr, factor=2),  d$scr_obs, col=ca, xlim=c(0,40),
      xlab='Species richness', ylab='Obsvd airscore')
-plot(naq, scr_obs, col=ca, xlim=c(0,20),
+plot(d$cmaq_n_3yroll, d$scr_obs, col=ca, xlim=c(0,20),
      xlab='CMAQ N dep', ylab='Obsvd airscore')
-plot(mat, scr_obs, col=ca,
+plot(d$ubc_mat, d$scr_obs, col=ca,
      xlab='Mean ann temp', ylab='Obsvd airscore')
-plot(jitter(sr, factor=2),  ci_rng, col=ca, xlim=c(0,40),
+plot(jitter(d$sr, factor=2),  ci_rng, col=ca, xlim=c(0,40),
      xlab='Species richness', ylab='Uncertainty')
-plot(naq, ci_rng, col=ca, xlim=c(0,20),
+plot(d$cmaq_n_3yroll, ci_rng, col=ca, xlim=c(0,20),
      xlab='CMAQ N dep', ylab='Uncertainty')
-plot(mat, ci_rng, col=ca,
+plot(d$ubc_mat, ci_rng, col=ca,
      xlab='Mean ann temp', ylab='Uncertainty')
 dev.off()
 
@@ -231,10 +237,10 @@ dev.off()
 png('./fig/fig_01_CIs_richness-CMAQ.png',
     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
-o <- order(sr, naq)
+o <- order(d$sr, d$cmaq_n_3yroll)
 plot_ci(ci[o,], xlab='Sites, ordered by richness then CMAQ N dep')
-csr <- cumsum(table(sr))[1:27]
-text(c(0,csr)+diff(c(0,csr,length(sr)))*0.5,17,labels=c(4:30,'>30'),
+csr <- cumsum(table(d$sr))[1:27]
+text(c(0,csr)+diff(c(0,csr,length(d$sr)))*0.5,17,labels=c(4:30,'>30'),
      cex=0.5)
 abline(v=csr, col=2)
 dev.off()
@@ -243,10 +249,10 @@ dev.off()
 png('./fig/fig_02_CIs_CMAQ.png',
     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
-o <- order(naq, sr)
+o <- order(d$cmaq_n_3yroll, d$sr)
 plot_ci(ci[o,], xlab='Sites, ordered by CMAQ N dep')
-csr <- cumsum(table(round(naq[o])))[1:15]
-text(c(0,csr)+diff(c(0,csr,length(sr)))*0.5, 17, labels=c(1:15,'>15'),
+csr <- cumsum(table(round(d$cmaq_n_3yroll[o])))[1:15]
+text(c(0,csr)+diff(c(0,csr,length(d$sr)))*0.5, 17, labels=c(1:15,'>15'),
      cex=0.5)
 abline(v=csr, col=2)
 dev.off()
@@ -255,8 +261,8 @@ dev.off()
 png('./fig/fig_01_CIs_zoom_SR11.png',
     wid=4.5, hei=4.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='s')
-o   <- order(naq)
-i   <- which(sr==11)
+o   <- order(d$cmaq_n_3yroll)
+i   <- which(d$sr==11)
 set.seed(121)
 i   <- sort(sample(i,size=50))
 tci <- ci[o,]
@@ -395,13 +401,13 @@ add_text(0.98,0.95,'Surplus', pos=2)
   col <- colorRampPalette(c('red','grey90','darkblue'))(n+mid)[-c(1:mid)]
   col[as.numeric(cut(x, brk, include.lowest=T))]
 }
-# plot(lon, lat, col=co(sr_deficit), asp=1.6,
+# plot(d$lon, d$lat, col=co(sr_deficit), asp=1.6,
 # main='', xlab='Richness sufficiency', ylab='')
 `map_it` <- function(x, ...) {
-  plot(lon, lat, type='n', asp=1.6, ylim=c(30,49),
+  plot(d$lon, d$lat, type='n', asp=1.6, ylim=c(30,49),
        ylab='', xlab='Richness sufficiency', ...)
   maps::map('usa', add=T)
-  points(lon, lat, pch=16, cex=0.5, col=co(sr_deficit))
+  points(d$lon, d$lat, pch=16, cex=0.5, col=co(sr_deficit))
   maps::map('state', add=T, lwd=0.5, col='#00000050')
 }
 map_it()
@@ -435,10 +441,10 @@ stopifnot(length(brk) == length(col))
   col <- colorRampPalette(c('red','grey90','darkblue'))(n+mid)[-c(1:mid)]
   col[as.numeric(cut(x, brk, include.lowest=T))]
 }
-plot(lon, lat, type='n', asp=1.6, ylim=c(30,49), xlim=c(-125,-50),
+plot(d$lon, d$lat, type='n', asp=1.6, ylim=c(30,49), xlim=c(-125,-50),
      ylab='', xlab='')
 maps::map('usa', add=T)
-points(lon, lat, pch=16, cex=0.5, col=co(sr_deficit))
+points(d$lon, d$lat, pch=16, cex=0.5, col=co(sr_deficit))
 maps::map('state', add=T, lwd=0.5, col='#00000050')
 ### INSET layout
 ppar <- par('plt')
@@ -518,10 +524,10 @@ stopifnot(length(brk) == length(col))
 `co` <- function (x, ...) {
   col[as.numeric(cut(x, brk, include.lowest=T))]
 }
-plot(lon, lat, type='n', asp=1.6, ylim=c(30,49), xlim=c(-125,-50),
+plot(d$lon, d$lat, type='n', asp=1.6, ylim=c(30,49), xlim=c(-125,-50),
      ylab='', xlab='')
 maps::map('usa', add=T)
-points(lon, lat, pch=16, cex=0.5, col=co(sr_deficit))
+points(d$lon, d$lat, pch=16, cex=0.5, col=co(sr_deficit))
 maps::map('state', add=T, lwd=0.5, col='#00000050')
 ### INSET layout
 ppar <- par('plt')
