@@ -30,7 +30,8 @@ require(scales)
 
 ### load and clean LICHEN SPECIES occurrence data
 rm(list=ls())
-s  <- read.csv('./data_raw/megadb_lich.csv', stringsAsFactors=F)
+s  <- read.csv('./data_raw/MegaDbLICHEN_2020.05.09.csv',
+               stringsAsFactors=F, fileEncoding = 'latin1')
 names(s) <- clean_text(names(s), lower=T)
 s  <- s[s$growthform == 'Epiphytic macrolichen',] # keep only macros
 s  <- s[,c('megadbid','sci_22chklst','fia_abun',
@@ -50,14 +51,14 @@ rm(s)
 ### convert spe to trait (ratings to be sampled)
 x <- spe
 x[x > 0 ] <- 1
-x <- sweep(x, 2, wa$n_depmaxfreq, '*')    # nitrogen ratings
+x <- sweep(x, 2, wa$n_depmaxfreq, '*')     # nitrogen ratings
 # x <- sweep(x, 2, wa$s_depmaxfreq, '*')   # sulfur ratings
-x[is.na(x)] <- 0L # zero out any NA (species that lacked ratings)
+x[is.na(x)] <- 0L    # zero out any NA (species that lacked ratings)
 j   <- colSums(x)==0 # 287 spp lacking valid spp ratings
 spe <- spe[,!j]
 x   <-   x[,!j]
 sr  <- apply(x, 1, function(x) sum(x>0))
-i   <- sr < 4 # 1706 species-poor sites (< 4 rated species)
+i   <- sr < 4        # 1706 species-poor sites (< 4 rated species)
 spe <- spe[!i,]
 x   <-   x[!i,]
 rm(i,j,wa)
@@ -66,10 +67,10 @@ x   <- as.matrix(x)
 ### some summary statistics
 scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore
 sr <- apply(x, 1, function(x) sum(x>0)) # obs richness of RATED spp
+hist(sr, breaks=seq(0, max(sr), len=44))
 
 ### some descriptive data (CMAQ and original airscores)
-d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv',
-              stringsAsFactors=F)
+d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
 names(d)  <- clean_text(names(d), lower=T)
 i         <- match(dimnames(x)[[1]], d$megadbid)
 naq       <- d$cmaq_n_3yroll[i]
@@ -102,7 +103,7 @@ mat       <- mat[!isna]
 # rm(d)
 
 # ######################################################################
-# ######################################################################
+#    #### unwrap me at your peril...   ###################
 # ######################################################################
 # ### for CLAD WG-2: estimate bootstrap 95% CI of the estimated airscore
 # ###   sample positive values (presences) from each row of x,
@@ -122,13 +123,13 @@ mat       <- mat[!isna]
 # b_scr <- sapply(1:NROW(spe), FUN=bootscr, x=x, simplify='array')
 # dimnames(b_scr)[[2]] <- dimnames(spe)[[1]]
 # cat(paste0('time elapsed: ', Sys.time()-time_start), '\n')
-# save(b_scr, file='./data/b_scr.rda')
+# save(b_scr, file='./res/b_scr.rda')
 # ######################################################################
 # ######################################################################
 # ######################################################################
 
 ### load bootstraps and calc bootstrapped 95% CI for site scores
-load(file='./data/b_scr.rda', verbose=T)
+load(file='./res/b_scr.rda', verbose=T)
 ci <- t(apply(b_scr, 2, function(x) quantile(x, c(0.025,0.50,0.975))))
 ci <- ci[!isna,]
 ci_rng <- ci[,3] - ci[,1] # calc breadth of CIs
@@ -177,13 +178,13 @@ ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
   colorbar(x, pal=pal)
 }
 ### exceedance
-png('C:/Users/Rob/Desktop/fig_01_map_exceedances.png',
+png('./fig/fig_01_map_exceedances.png',
     wid=5, hei=3.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
 map_it(x=exc, main='Airscore N exceedance')
 dev.off()
 ### exceedance uncertainty
-png('C:/Users/Rob/Desktop/fig_01_map_exceedance_unc.png',
+png('./fig/fig_01_map_exceedance_unc.png',
     wid=5, hei=3.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
 map_it(x=ci_rng, main='CI breadth for N exceedance')
@@ -193,7 +194,7 @@ dev.off()
 ### DIAGNOSTICS
 
 ### diagnostics........
-png('C:/Users/Rob/Desktop/fig_00_diagnostics.png',
+png('./fig/fig_00_diagnostics.png',
     wid=12, hei=8, uni='in', res=700, bg='transparent')
 set_par_mercury(6)
 ca <- colvec(naq, alpha=0.9)
@@ -224,7 +225,7 @@ dev.off()
 }
 
 ### plot bootstrapped airscores vs richness, then CMAQ
-png('C:/Users/Rob/Desktop/fig_01_CIs_richness-CMAQ.png',
+png('./fig/fig_01_CIs_richness-CMAQ.png',
     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
 o <- order(sr, naq)
@@ -236,7 +237,7 @@ abline(v=csr, col=2)
 dev.off()
 
 ### plot bootstapped airscores vs observed CMAQ
-png('C:/Users/Rob/Desktop/fig_02_CIs_CMAQ.png',
+png('./fig/fig_02_CIs_CMAQ.png',
     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
 o <- order(naq, sr)
@@ -248,7 +249,7 @@ abline(v=csr, col=2)
 dev.off()
 
 ### zoom-in
-png('C:/Users/Rob/Desktop/fig_01_CIs_zoom_SR11.png',
+png('./fig/fig_01_CIs_zoom_SR11.png',
     wid=4.5, hei=4.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='s')
 o   <- order(naq)
@@ -350,7 +351,7 @@ n_suff <- apply(b_sem, 2, function(x) min(which(x < mqo), na.rm=T)+1)
 sr_deficit <- sr - n_suff # species needed meet MQO
 
 ### SEM across varying sample sizes (and MQO)
-png('C:/Users/Rob/Desktop/fig_00_SEM_curves.png',
+png('./fig/fig_00_SEM_curves.png',
     wid=7.5, hei=4, uni='in', res=700, bg='transparent')
 set_par_mercury(2, mgp=c(1.8,0.2,0))
 matplot(b_sem, type='l', xlab='Plot richness',
@@ -365,7 +366,7 @@ dev.off()
 rm(b_sem)
 ### sample size at which bootstrapped SEMs are below MQO threshold
 ###   (say, 1.5 kg ha-1 y-1)
-png('C:/Users/Rob/Desktop/fig_01_min_sufficient.png',
+png('./fig/fig_01_min_sufficient.png',
     wid=7.5, hei=4, uni='in', res=700, bg='transparent')
 set_par_mercury(2, mgp=c(2.4,0.2,0), mar=c(4, 4, 0.5, 0.5))
 `h` <- function(x,  ...) {
@@ -411,7 +412,7 @@ dev.off()
 
 
 #####################################################################
-png('C:/Users/Rob/Desktop/fig_01_map_sufficiency.png',
+png('./fig/fig_01_map_sufficiency.png',
     wid=6.5, hei=3.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m', mar=c(1,1,0,0))
 `h` <- function(x,  ...) {
@@ -470,7 +471,7 @@ dev.off()
 
 
 #####################################################################
-png('C:/Users/Rob/Desktop/fig_01_map_sufficiency_rainbow.png',
+png('./fig/fig_01_map_sufficiency_rainbow.png',
     wid=6.5, hei=3.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m', mar=c(1,1,0,0))
 `h` <- function(x,  ...) {

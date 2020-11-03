@@ -18,19 +18,19 @@ require(quantreg)
 # dd <- read.csv(url(paste0('https://raw.githubusercontent.com/nelsopet/',
 #                          'Lichen_CL_quantile_regression/master/output/',
 #                          'LichDb_sFncGrpSens_All_Abun.csv')))
-# m <- dd$megadbid  ;  rm(dd)# keep exact same plots Peter used???
+# m <- dd$megadbid  ;  rm(dd)  # keep exact same plots Peter used???
 
 ### load MEGADB data
 d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
 
-# ### Peter's used N from calibration equation
-# set_par_mercury(6)
-# plot(d$cmaq_n_3yroll, d$n_lich_kghay)
-# hist(d$cmaq_n_3yroll, breaks=seq(0,30,by=0.5))
+### Peter's used N from calibration equation
+set_par_mercury(6)
+plot(d$cmaq_n_3yroll, d$n_lich_kghay)
+hist(d$cmaq_n_3yroll, breaks=seq(0,30,by=0.5))
+hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5))
+plot(d$latusedd, d$n_lich_kghay)
+plot(d$latusedd, d$cmaq_n_3yroll)
 # hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5))
-# plot(d$latusedd, d$n_lich_kghay)
-# plot(d$latusedd, d$cmaq_n_3yroll)
-# # hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5))
 
 ### CMAQ doesnt exist for Alaska, substitute N-calibration estimates
 is_ak <- !is.na(d$latusedd) & (d$latusedd > 49.00001)
@@ -45,10 +45,7 @@ nnm <- c('spp_rich','N','maxaug_c','mindec_c',
 names(d)[match(onm,names(d))] <- nnm
 rm(onm, nnm)
 
-# ### OPTION 1 -- try matching Peter's plots
-# d <- d[d$megadbid %in% m,]  ;  rm(m)
-
-### OPTION 2 -- remove nonstandard plots
+### -- remove nonstandard plots
 d <- d[d$plottype == 'Standard',]
 d <- d[d$fia_prot==1,]
 j <- c('spp_rich','N','maxaug_c','mindec_c','precip_cm','continen','CMD')
@@ -121,8 +118,7 @@ upr <- sapply(sr_decline,
 data.frame(perc_decline=v, sr_decline, CL, lwr, upr)
 
 ### plot
-tiff('C:/Users/Rob/Desktop/CL.tiff', wid=4.5, hei=4.5, uni='in',
-     bg='transparent', res=700)
+png('./fig/CL.png', wid=4.5, hei=4.5, uni='in', bg='transparent', res=700)
 set_par_mercury(1)
 plot(d$N, d$spp_rich, cex=0.7, xlim=c(0,28), # col='#00000050',
      col='#00000000',
@@ -156,7 +152,7 @@ n <- 999
 b <- data.frame(b0=rnorm(n, cx[1], 5),
                 b1=rnorm(n, cx[2], 0.1),
                 b2=rnorm(n, cx[3], 0.01))
-tiff('C:/Users/Rob/Desktop/CL_monte_carlo.tiff', wid=8.75, hei=4.5, uni='in',
+png('./fig/CL_monte_carlo.png', wid=8.75, hei=4.5, uni='in',
      bg='transparent', res=700)
 set_par_mercury(2)
 plot(d$N, d$spp_rich, xlim=c(0,28), type='n',
@@ -217,8 +213,8 @@ dev.off()
 #' #32.97                -2.19                 0.07
 #' # richness = 32.97 - 2.19*Ndep + 0.07*Ndep^2
 #' #
-#' # tiff(paste('SR_vs_N_percentiles','_',
-#' #            format(Sys.time(),'%y%d%m'),'.tiff',sep=''),
+#' # png(paste('SR_vs_N_percentiles','_',
+#' #            format(Sys.time(),'%y%d%m'),'.png',sep=''),
 #' #      wid=1200, hei=1200, units='px', pointsize=24)
 #' names(mod_pred)
 #' x         <- unlist(mod_pred[2], recursive=F, use.names=T)
