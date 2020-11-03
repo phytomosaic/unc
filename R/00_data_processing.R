@@ -95,7 +95,7 @@ rm(x,iswest,iseast,nw,ne,sw,se,f)
 
 
 ###   calc EXCEEDANCES   ##########################################
-# lookup table CLs from Diversity paper (are invariant to geography)
+# lookup table CLs, from Diversity paper (are invariant to geography)
 tab <- data.frame(metric = rep(c('Species richness',
                                  'Sensitive species richness',
                                  'Forage lichen abundance',
@@ -131,18 +131,10 @@ names(s_exceed) <- paste0('s_adj_', lab)
 d <- cbind(d, n_exceed, s_exceed)  ; rm(n_exceed, s_exceed)
 ###   END exceedances   ###########################################
 
-
 ### sort by coordinates
 d <- d[order(d$lat, d$lon),]
 
-
 ### save
 save(d, file='./data/d.rda')
-
-
-
-
-
-
 
 ####    END    ####
