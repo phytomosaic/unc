@@ -1,6 +1,6 @@
 ######################################################################
 #
-#  CLAD WG-2 -- estimating uncertainty
+#  CLAD WG-2 -- estimating uncertainty -- species bootstrap resampling
 #
 #    Rob Smith, phytomosaic@gmail.com, 12 June 2020
 #
@@ -39,6 +39,7 @@ s  <- s[,c('megadbid','sci_22chklst','fia_abun',
 s$sci_22chklst <- clean_text(s$sci_22chklst, TRUE)
 
 ### get species ratings ('peak detection frequency' for N or S)
+###    this comes from HTR's 2018 spline regressions
 wa <- s[!duplicated(s$sci_22chklst),
         c('sci_22chklst','n_depmaxfreq','s_depmaxfreq')]
 wa <- wa[order(wa$sci_22chklst),]
@@ -50,7 +51,7 @@ rm(s)
 
 ### convert spe to trait (ratings to be sampled)
 x <- spe
-x[x > 0 ] <- 1
+x[x > 0 ] <- 1                             # convert to binary
 x <- sweep(x, 2, wa$n_depmaxfreq, '*')     # nitrogen ratings
 # x <- sweep(x, 2, wa$s_depmaxfreq, '*')   # sulfur ratings
 x[is.na(x)] <- 0L    # zero out any NA (species that lacked ratings)
@@ -66,8 +67,10 @@ x   <- as.matrix(x)
 
 ### some summary statistics
 scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore
-sr <- apply(x, 1, function(x) sum(x>0)) # obs richness of RATED spp
-hist(sr, breaks=seq(0, max(sr), len=44))
+sr <- apply(x, 1, function(x) sum(x>0))          # obs richness of RATED spp
+ecole::set_par_mercury(2)
+hist(scr_obs, breaks=seq(0, max(scr_obs), len=44), xlab='Observed airscore')
+hist(sr, breaks=seq(0, max(sr), len=44), xlab='Rated species richness')
 
 ### some descriptive data (CMAQ and original airscores)
 d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
@@ -78,8 +81,8 @@ saq       <- d$cmaq_s_3yroll[i]
 nairscore <- d$n_airscore[i]
 sairscore <- d$s_airscore[i]
 mat       <- d$ubc_mat[i]
-lon       <- d$longusedd[i]
-lat       <- d$latusedd[i]
+lon       <- d$longusenad83[i]
+lat       <- d$latusenad83[i]
 lon[lat > 49.01] <- NA
 lat[lat > 49.01] <- NA
 rm(d)
@@ -133,8 +136,8 @@ load(file='./res/b_scr.rda', verbose=T)
 ci <- t(apply(b_scr, 2, function(x) quantile(x, c(0.025,0.50,0.975))))
 ci <- ci[!isna,]
 ci_rng <- ci[,3] - ci[,1] # calc breadth of CIs
-exc <- ci[,2] - 3.5 # calc species richness N exceedance (CL = 3.5)
-exc <- exc - 2 # downweight fuzz...
+exc <- ci[,2] - 3.5       # calc species richness N exceedance (CL = 3.5)
+exc <- exc - 2            # downweight fuzz...
 
 ### plot maps of exceedances for presentation
 ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
