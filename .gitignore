@@ -2,3 +2,16 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# the raw data
+data_raw/
+data/
+
+# manuscript drafts
+ms/
+
+# miscellaneous from colleagues
+info_contributed/
+
+# presentations
+prezi/
