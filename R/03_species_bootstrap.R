@@ -140,7 +140,7 @@ rm(i, j, s, wa, inm, is_ak) # cleanup
 ### load bootstraps and calc bootstrapped 95% CI for site scores
 load(file='./res/b_scr.rda', verbose=T)
 ci <- t(apply(b_scr, 2, function(x) quantile(x, c(0.025,0.50,0.975))))
-ci <- ci[!isna,]
+# ci <- ci[!isna,]
 ci_rng <- ci[,3] - ci[,1] # calc breadth of CIs
 exc <- ci[,2] - 3.5       # calc species richness N exceedance (CL = 3.5)
 exc <- exc - 2            # downweight fuzz...
