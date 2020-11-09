@@ -13,7 +13,8 @@ require(raster)
 
 ### load points
 load('./data/d.rda')
-str(d)
+d <- d[d$lat < 49.01,] # remove Alaska bc CMAQ absent there
+
 ### load CMAQ values
 x <- paste0('precip_adj_bias_adj_withWestCoast_2012_CMAQv5_0_1_',
             'bidi_withNH3MetEPIC_updates_12km_CONUS_N_S_kg_ha')
@@ -30,17 +31,14 @@ proj4string(s)
 xy <- make_xy(d[c('lon','lat')], trg_prj=proj4string(s))
 
 ###
-`get_cmaq` <- function(xy, field='TD_N', plotid = dimnames(d)[[1]]) {
+`get_cmaq` <- function(xy, field='TD_N', ...) {
   val  <- rep(NA, NROW(xy))
-  names(val) <- dimnames(env)[[1]]
   blks <- split(1:NROW(xy), ceiling(seq_along(1:NROW(xy))/20))
   nblk <- length(blks)
   t0   <- Sys.time()
-  for(b in 1:nblk){
+  for(b in 1:nblk) {
     cat('\nblock', b, 'of', nblk)
-    system.time(val[ blks[[b]] ] <-
-                  raster::extract(s, xy[blks[[b]],])[[field]]
-    )
+    val[ blks[[b]] ] <- raster::extract(s, xy[blks[[b]],])[[field]]
   }
   cat('\ntime elapsed:', Sys.time() - t0,'\n')
   val
@@ -52,29 +50,51 @@ B <- 99
 a <- array(NA, dim=c(NROW(d), 2, B))  # array of random coords centered on pts
 o <- matrix(NA, nrow=NROW(d), ncol=B) # array of resampled outcomes
 
-
-d <- d[order(d$lat, d$lon),]
-# 0.1 decimal degree is about 10-11 km
+# decimal degree offsets are about 12 km at 45 degrees North
 for(i in 1:NROW(a)) { # for each site
-  a[i,1,] <- d$lon[i] + rnorm(B, 0, 0.1)
-  a[i,2,] <- d$lat[i] + rnorm(B, 0, 0.1)
-}
-
-plot(d[111:119,c('lon','lat')])
-
-for(i in 1:NROW(a)) { # for each site
-  i <- 111
-  points(a[i,1,], a[i,2,], cex=0.2, col='red')
+  a[i,1,] <- d$lon[i] + rnorm(B, 0, 0.14 * 0.25)
+  a[i,2,] <- d$lat[i] + rnorm(B, 0, 0.11 * 0.25)
 }
 
 
 
+sek <- sample(1:NROW(d), size=1497)
+sek <- 1:NROW(d)
+plot(d[sek,c('lon','lat')], cex=0.5, ylim=c(45,49), xlim=c(-125,-119))
 
-dim(a)
-dim(b)
-head(a)
-class(a)
-array()
+
+
+for(i in 1:length(sek)) { # for each site
+  ii <- sek[i]
+  points(a[ii,1,], a[ii,2,], cex=0.05,
+         col=viridis::viridis(length(sek))[i])
+}
+
+
+
+
+
+for(i in 1:length(sek)) { # for each site
+  ii <- sek[i]
+
+  xy <- make_xy(data.frame(lon=a[ii,1,], lat=a[ii,2,]), trg_prj=proj4string(s))
+  points(xy)
+  get_cmaq(xy)
+
+
+
+  points(a[ii,1,], a[ii,2,], cex=0.05,
+         col=viridis::viridis(length(sek))[i])
+}
+
+
+
+
+
+
+
+
+
 
 
 
