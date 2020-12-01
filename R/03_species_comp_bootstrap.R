@@ -28,6 +28,8 @@ s  <- s[s$growthform == 'Epiphytic macrolichen',] # keep only macros
 s  <- s[,c('megadbid','sci_22chklst','fia_abun',
            'n_depmaxfreq','s_depmaxfreq')]
 s$sci_22chklst <- clean_text(s$sci_22chklst, TRUE)
+# s$n_depmaxfreq <- as.numeric(s$n_depmaxfreq)
+# s$s_depmaxfreq <- as.numeric(s$s_depmaxfreq)
 
 ### get species ratings ('peak detection frequency' for N or S)
 ###   this comes from HTR's 2018 spline regressions
@@ -94,10 +96,6 @@ d$scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore (this way)
 d$sr      <- apply(x, 1, function(i) sum(i>0))     # obs richness of RATED spp
 rm(i, j, s, wa, inm, is_ak) # cleanup
 
-
-
-
-
 # ######################################################################
 #    #### unwrap me at your peril...   ###################
 # ######################################################################
@@ -124,10 +122,6 @@ rm(i, j, s, wa, inm, is_ak) # cleanup
 # ######################################################################
 
 
-
-
-
-
 ### load bootstraps and calc bootstrapped 95% CI for site scores
 load(file='./res/b_scr.rda', verbose=T)
 ci <- t(apply(b_scr, 2, function(x) quantile(x, c(0.025,0.50,0.975))))
@@ -135,6 +129,10 @@ ci <- t(apply(b_scr, 2, function(x) quantile(x, c(0.025,0.50,0.975))))
 ci_rng <- ci[,3] - ci[,1] # calc breadth of CIs
 exc <- ci[,2] - 3.5       # calc species richness N exceedance (CL = 3.5)
 exc <- exc - 2            # downweight fuzz...
+
+match(d$megadbid, rownames(ci))
+
+
 
 ### plot maps of exceedances for presentation
 ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
