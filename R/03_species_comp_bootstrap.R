@@ -21,70 +21,123 @@ require(scales)
 
 ### load and clean LICHEN SPECIES occurrence data
 rm(list=ls())
-s  <- read.csv('./data_raw/MegaDbLICHEN_2020.05.09.csv',
-               stringsAsFactors=F, fileEncoding = 'latin1')
-names(s) <- clean_text(names(s), lower=T)
-s  <- s[s$growthform == 'Epiphytic macrolichen',] # keep only macros
-s  <- s[,c('megadbid','sci_22chklst','fia_abun',
-           'n_depmaxfreq','s_depmaxfreq')]
-s$sci_22chklst <- clean_text(s$sci_22chklst, TRUE)
-# s$n_depmaxfreq <- as.numeric(s$n_depmaxfreq)
-# s$s_depmaxfreq <- as.numeric(s$s_depmaxfreq)
 
-### get species ratings ('peak detection frequency' for N or S)
-###   this comes from HTR's 2018 spline regressions
-wa <- s[!duplicated(s$sci_22chklst),
-        c('sci_22chklst','n_depmaxfreq','s_depmaxfreq')]
-wa <- wa[order(wa$sci_22chklst),]
+`make_ratings_matrix` <- function(which_element='n', ...) {
+  s  <- read.csv('./data_raw/MegaDbLICHEN_2020.05.09.csv',
+                 stringsAsFactors=F, fileEncoding = 'latin1')
+  names(s) <- ecole::clean_text(names(s), lower=T)
+  s  <- s[s$growthform == 'Epiphytic macrolichen',] # keep only macrolichens
+  s  <- s[,c('megadbid','sci_22chklst','fia_abun',
+             'n_depmaxfreq','s_depmaxfreq')]
+  s$sci_22chklst <- ecole::clean_text(s$sci_22chklst, TRUE)
+  # s$n_depmaxfreq <- as.numeric(s$n_depmaxfreq)
+  # s$s_depmaxfreq <- as.numeric(s$s_depmaxfreq)
+  ### get species ratings ('peak detection frequency' for N or S)
+  ###   this comes from HTR's 2018 spline regressions
+  wa <- s[!duplicated(s$sci_22chklst),
+          c('sci_22chklst','n_depmaxfreq','s_depmaxfreq')]
+  wa <- wa[order(wa$sci_22chklst),]
+  ### reshape wide for abundance matrix
+  spe <- labdsv::matrify(s[,c('megadbid','sci_22chklst','fia_abun')])
+  ### convert spe to trait (ratings to be sampled)
+  x <- spe                                   # duplicate
+  x[x > 0 ] <- 1                             # convert to binary
+  ### select the element
+  if (which_element == 'n') {
+    x <- sweep(x, 2, wa$n_depmaxfreq, '*')   # nitrogen ratings
+  } else if (which_element == 's') {
+    x <- sweep(x, 2, wa$s_depmaxfreq, '*')   # sulfur ratings
+  }
+  ### filter out weak species
+  x[is.na(x)] <- 0L    # zero out any NA (species that lacked ratings)
+  j   <- colSums(x)==0 # 287 spp lacking valid spp ratings
+  spe <- spe[,!j]
+  x   <-   x[,!j]
+  i   <- apply(x, 1, function(x) sum(x>0)) < 4 # species-poor (< 4 rated species)
+  spe <- spe[!i,]
+  x   <-   x[!i,]
+  x   <- as.matrix(x)
+  ### output
+  return(list(spe = spe,  # species abundance matrix
+              x = x))     # species optimum rating matrix
+}
+`match_site_data` <- function(x, spe, which_element='n', ...) {
+  ### get descriptive data (CMAQ and original airscores)
+  d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
+  names(d) <- ecole::clean_text(names(d), lower=T)
+  d <- d[!(duplicated(d$megadbid)),]      # (!) one megadbid was duplicated
+  d$megadbid  <- as.character(d$megadbid)
+  rownames(d) <- d$megadbid
+  d[,c('latusedd','longusedd')] <- NULL   # kill bad columns
+  names(d)[names(d) %in% c('latusenad83','longusenad83')] <- c('lat','lon')
+  d <- d[,c('lon','lat', names(d)[!names(d) %in% c('lon','lat')])] # reorder cols
+  d <- d[!(is.na(d$lon) | is.na(d$lat)),] # keep only non-NA coords
+  d <- d[!(d$lat > 49.5 & d$lat < 50),]   # rm one invalid location in Canada
+  d <- d[!(d$lon > (-75) & d$lat < 38),]  # rm one invalid location in Atlantic
+  is_ak <- d$lat > 50    # assign Alaska data where none exist
+  d$cmaq_n_3yroll[is_ak] <- d$n_lich_kghay[is_ak]
+  d$cmaq_n_3yroll[is_ak & is.na(d$cmaq_n_3yroll)] <- 1.5
+  d$cmaq_s_3yroll[is_ak] <- 1.5
+  d$ubc_mwmt[d$ubc_mwmt < (-999)] <- NA
+  d$meanmaxaugt5y_c[is_ak] <- d$ubc_mwmt[is_ak]
+  d$ubc_map[d$ubc_map < 0] <- NA
+  d$meanppt5y_cm[is_ak]    <- d$ubc_map[is_ak]
+  inm <- intersect(dimnames(x)[[1]], d$megadbid)
+  spe <- spe[dimnames(spe)[[1]] %in% inm, ]
+  x   <- x[dimnames(x)[[1]] %in% inm, ]
+  d   <- d[d$megadbid %in% inm, ]
+  spe <- spe[order(dimnames(spe)[[1]]), ]
+  x   <- x[order(dimnames(x)[[1]]),]
+  d   <- d[order(d$megadbid),]
+  ### select the element
+  if (which_element == 'n') {
+    i   <- which(!is.na(d$cmaq_n_3yroll)) # omit if lacking CMAQ values
+  } else if (which_element == 's') {
+    i   <- which(!is.na(d$cmaq_s_3yroll)) # omit if lacking CMAQ values
+  }
+  spe <- spe[i, ] # omit if lacking CMAQ values
+  x   <- x[i,]    # omit if lacking CMAQ values
+  d   <- d[i,]    # omit if lacking CMAQ values
+  ### check that rownames and dimensions are all equal
+  stopifnot({
+    identical(dimnames(spe)[[1]], d$megadbid) &
+      identical(dimnames(x)[[1]], d$megadbid) &
+      all.equal(dim(spe), dim(x)) &
+      all.equal(NROW(spe), NROW(d))
+  })
+  ### observed site values: airscore and richness
+  d$scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore (this way)
+  d$sr      <- apply(x, 1, function(i) sum(i>0))     # obs richness of RATED spp
+  ### output
+  return(list(
+    spe = spe,
+    x = x,
+    d = d
+  ))
+}
 
-### reshape wide for abundance matrix
-spe <- labdsv::matrify(s[,c('megadbid','sci_22chklst','fia_abun')])
+### for N ratings
+o   <- make_ratings_matrix('n')
+o   <- match_site_data(o$x, o$spe, 'n')
+spe <- o$spe
+x   <- o$x
+d   <- o$d
+rm(o)
+dim(spe)
+dim(x)
+dim(d)
+ls()
 
-### convert spe to trait (ratings to be sampled)
-x <- spe                                   # duplicate
-x[x > 0 ] <- 1                             # convert to binary
-x <- sweep(x, 2, wa$n_depmaxfreq, '*')     # nitrogen ratings
-# x <- sweep(x, 2, wa$s_depmaxfreq, '*')   # sulfur ratings
-x[is.na(x)] <- 0L    # zero out any NA (species that lacked ratings)
-j   <- colSums(x)==0 # 287 spp lacking valid spp ratings
-spe <- spe[,!j]
-x   <-   x[,!j]
-i   <- apply(x, 1, function(x) sum(x>0)) < 4 # species-poor (< 4 rated species)
-spe <- spe[!i,]
-x   <-   x[!i,]
-x   <- as.matrix(x)
+### for S ratings
+o   <- make_ratings_matrix('s')
+o   <- match_site_data(o$x, o$spe, 's')
+spe <- o$spe
+x   <- o$x
+d   <- o$d
 
-### get descriptive data (CMAQ and original airscores)
-d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
-names(d) <- ecole::clean_text(names(d), lower=T)
-d <- d[!(duplicated(d$megadbid)),]      # (!) one megadbid was duplicated
-d$megadbid  <- as.character(d$megadbid)
-rownames(d) <- d$megadbid
-d[,c('latusedd','longusedd')] <- NULL   # kill bad columns
-names(d)[names(d) %in% c('latusenad83','longusenad83')] <- c('lat','lon')
-d <- d[,c('lon','lat', names(d)[!names(d) %in% c('lon','lat')])] # reorder cols
-d <- d[!(is.na(d$lon) | is.na(d$lat)),] # keep only non-NA coords
-d <- d[!(d$lat>49.5 & d$lat < 50),]     # rm one invalid location in Canada
-d <- d[!(d$lon > (-75) & d$lat < 38),]  # rm one invalid location in Atlantic
-is_ak <- d$lat > 50    # assign Alaska data where none exist
-d$cmaq_n_3yroll[is_ak] <- d$n_lich_kghay[is_ak]
-d$cmaq_n_3yroll[is_ak & is.na(d$cmaq_n_3yroll)] <- 1.5
-d$cmaq_s_3yroll[is_ak] <- 1.5
-d$ubc_mwmt[d$ubc_mwmt < (-999)] <- NA
-d$meanmaxaugt5y_c[is_ak] <- d$ubc_mwmt[is_ak]
-d$ubc_map[d$ubc_map < 0] <- NA
-d$meanppt5y_cm[is_ak]    <- d$ubc_map[is_ak]
-inm <- intersect(dimnames(x)[[1]], d$megadbid)
-spe <- spe[dimnames(spe)[[1]] %in% inm, ]
-x   <- x[dimnames(x)[[1]] %in% inm, ]
-d   <- d[d$megadbid %in% inm, ]
-spe <- spe[order(dimnames(spe)[[1]]), ]
-x   <- x[order(dimnames(x)[[1]]),]
-d   <- d[order(d$megadbid),]
-i   <- which(!is.na(d$cmaq_n_3yroll)) # omit if lacking CMAQ values
-spe <- spe[i, ] # omit if lacking CMAQ values
-x   <- x[i,]    # omit if lacking CMAQ values
-d   <- d[i,]    # omit if lacking CMAQ values
+os <- match_site_data(xs, spes, 's')
+
+
 
 ### checks
 identical(dimnames(spe)[[1]], d$megadbid) # expect TRUE
@@ -92,8 +145,6 @@ identical(dimnames(x)[[1]], d$megadbid)   # expect TRUE
 dim(d)   # 8875 sites, descriptor matrix
 dim(spe) # 8875 sites, species abundance matrix
 dim(x)   # 8875 sites, species ratings 'traits' matrix
-d$scr_obs <- apply(x, 1, function(i) mean(i[i>0])) # obs airscore (this way)
-d$sr      <- apply(x, 1, function(i) sum(i>0))     # obs richness of RATED spp
 rm(i, j, s, wa, inm, is_ak) # cleanup
 
 # ######################################################################
