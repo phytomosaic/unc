@@ -58,7 +58,6 @@ rm(list=ls())
   return(list(spe = spe, x = x))
 }
 `match_site_data` <- function(x, spe, which_element='n', ...) {
-  # get descriptive data (CMAQ and original airscores)
   d <- read.csv('./data_raw/MegaDbPLOT_2020.05.09.csv', stringsAsFactors=F)
   names(d) <- ecole::clean_text(names(d), lower=T)
   d <- d[!(duplicated(d$megadbid)),]      # (!) one megadbid was duplicated
@@ -222,12 +221,12 @@ ds$ci_rng <- ds$upr - ds$lwr # calc breadth of CIs
 dn$exc <- dn$mean - 1.5   # N airscores CL = 1.5
 ds$exc <- ds$mean - 2.7   # S airscores CL = 2.7
 
-### histograms of uncertainties
-set_par_mercury(2)
+### histograms of uncertainties and exceedances
+set_par_mercury(4)
+hist(dn$exc, breaks=seq(-5, max(ds$exc)+0.5,by=0.5)) # N fairly tight
+hist(ds$exc, breaks=seq(-5, max(ds$exc)+0.5,by=0.5)) # S ranges higher
 hist(dn$ci_rng, breaks=seq(0, max(ds$ci_rng)+0.05,by=0.05)) # N fairly tight
 hist(ds$ci_rng, breaks=seq(0, max(ds$ci_rng)+0.05,by=0.05)) # S ranges higher
-
-
 
 ### plot maps of exceedances for presentation
 ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
@@ -236,15 +235,14 @@ ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
         '#FEE695', '#FDD985', '#FDC978', '#FDB96A','#FCA75E', '#F99254',
         '#F67D4A', '#F26943','#E85A47', '#DE4B4B', '#D33C4E', '#C1284A',
         '#AF1446', '#9E0142', rep('transparent',2))
-`map_it` <- function(x, pal=ca, ...) {
-  plot(d$lon, d$lat, type='n', asp=1.6, ylim=c(30,49),
-       ylab='', xlab='', ...)
+`map_it` <- function(x, whichcol = 'exc', pal=ca, ...) {
+  plot(x$lon, x$lat, type='n', asp=1.6, ylab='', xlab='', ...)
   maps::map('usa', fill=T, col='white', add=T)
-  points(d$lon, d$lat, pch=16, cex=0.5, col=colvec(x, pal=ca))
+  points(x$lon, x$lat, pch=16, cex=0.5, col=colvec(x[,whichcol], pal=ca))
   maps::map('state', add=T, lwd=0.5, col='#00000050')
   `colorbar` <- function(x, main='', pal, ...) {
     ppar <- par('plt')
-    xmin <- ppar[2] - (ppar[2] - ppar[1]) * 0.19
+    xmin <- ppar[2] - (ppar[2] - ppar[1]) * 0.15
     xmax <- ppar[2] - (ppar[2] - ppar[1]) * 0.05
     ymin <- ppar[3] + (ppar[4] - ppar[3]) * 0.05
     ymax <- ppar[3] + (ppar[4] - ppar[3]) * 0.35
@@ -268,48 +266,87 @@ ca <- c('#5E4FA2', '#4F61AA','#4173B3', '#3386BC','#4198B6', '#51ABAE',
     bar(pal=pal, min(x, na.rm=T), round(max(x, na.rm=T), 0))
     par(op)
   }
-  colorbar(x, pal=pal)
+  colorbar(x[,whichcol], pal=pal)
 }
-### exceedance
-png('./fig/fig_01_map_exceedances.png',
+
+### map exceedances
+png('./fig/fig_01_map_n_exceedances.png',
     wid=5, hei=3.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
-map_it(x=exc, main='Airscore N exceedance')
+map_it(dn, 'exc', main='Airscore N exceedance') # ylim=c(30,49)
 dev.off()
-### exceedance uncertainty
-png('./fig/fig_01_map_exceedance_unc.png',
+png('./fig/fig_01_map_s_exceedances.png',
     wid=5, hei=3.5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
-map_it(x=ci_rng, main='CI breadth for N exceedance')
+map_it(ds, 'exc', main='Airscore S exceedance') # ylim=c(30,49)
 dev.off()
+### map exceedance *uncertainty*
+png('./fig/fig_01_map_n_exc_uncertainty.png',
+    wid=5, hei=3.5, uni='in', res=700, bg='transparent')
+set_par_mercury(1, pty='m')
+map_it(dn, 'ci_rng', main='CI breadth for N exceedance')
+dev.off()
+png('./fig/fig_01_map_s_exc_uncertainty.png',
+    wid=5, hei=3.5, uni='in', res=700, bg='transparent')
+set_par_mercury(1, pty='m')
+map_it(ds, 'ci_rng', main='CI breadth for S exceedance')
+dev.off()
+
+
+
 
 
 ### DIAGNOSTICS
 
-### diagnostics........
-png('./fig/fig_00_diagnostics.png',
+# correct NA climate values
+dn$ubc_mat[dn$ubc_mat < -99] <- NA
+ds$ubc_mat[ds$ubc_mat < -99] <- NA
+
+### diagnostics N ........
+png('./fig/fig_00_diagnostics_n.png',
     wid=12, hei=8, uni='in', res=700, bg='transparent')
 set_par_mercury(6)
-ca <- colvec(d$cmaq_n_3yroll, alpha=0.9)
-plot(jitter(d$sr, factor=2),  d$scr_obs, col=ca, xlim=c(0,40),
+ca <- colvec(dn$cmaq_n_3yroll, alpha=0.9)
+plot(jitter(dn$sr, factor=2),  dn$scr_obs, col=ca, xlim=c(0,40),
      xlab='Species richness', ylab='Obsvd airscore')
-plot(d$cmaq_n_3yroll, d$scr_obs, col=ca, xlim=c(0,20),
+plot(dn$cmaq_n_3yroll, dn$scr_obs, col=ca, xlim=c(0,20),
      xlab='CMAQ N dep', ylab='Obsvd airscore')
-plot(d$ubc_mat, d$scr_obs, col=ca,
+plot(dn$ubc_mat, dn$scr_obs, col=ca,
      xlab='Mean ann temp', ylab='Obsvd airscore')
-plot(jitter(d$sr, factor=2),  ci_rng, col=ca, xlim=c(0,40),
+plot(jitter(dn$sr, factor=2),  dn$ci_rng, col=ca, xlim=c(0,40),
      xlab='Species richness', ylab='Uncertainty')
-plot(d$cmaq_n_3yroll, ci_rng, col=ca, xlim=c(0,20),
+plot(dn$cmaq_n_3yroll, dn$ci_rng, col=ca, xlim=c(0,20),
      xlab='CMAQ N dep', ylab='Uncertainty')
-plot(d$ubc_mat, ci_rng, col=ca,
+plot(dn$ubc_mat, dn$ci_rng, col=ca,
+     xlab='Mean ann temp', ylab='Uncertainty')
+dev.off()
+### diagnostics S ........
+png('./fig/fig_00_diagnostics_s.png',
+    wid=12, hei=8, uni='in', res=700, bg='transparent')
+set_par_mercury(6)
+ca <- colvec(ds$cmaq_s_3yroll, alpha=0.9)
+plot(jitter(ds$sr, factor=2),  ds$scr_obs, col=ca, xlim=c(0,40),
+     xlab='Species richness', ylab='Obsvd airscore')
+plot(ds$cmaq_s_3yroll, ds$scr_obs, col=ca, xlim=c(0,20),
+     xlab='CMAQ S dep', ylab='Obsvd airscore')
+plot(ds$ubc_mat, ds$scr_obs, col=ca,
+     xlab='Mean ann temp', ylab='Obsvd airscore')
+plot(jitter(ds$sr, factor=2),  ds$ci_rng, col=ca, xlim=c(0,40),
+     xlab='Species richness', ylab='Uncertainty')
+plot(ds$cmaq_s_3yroll, ds$ci_rng, col=ca, xlim=c(0,20),
+     xlab='CMAQ S dep', ylab='Uncertainty')
+plot(ds$ubc_mat, ds$ci_rng, col=ca,
      xlab='Mean ann temp', ylab='Uncertainty')
 dev.off()
 
+
+
+
 ### mean and CI are positively related to richness..... WHY???
 `plot_ci` <- function (z, ...) {
-  y   <- z[,1]
-  lwr <- z[,2]
-  upr <- z[,3]
+  y   <- z$mean
+  lwr <- z$lwr
+  upr <- z$upr
   x   <- 1:NROW(z)
   ylm <- c(min(c(y,lwr),na.rm=T) - 0.4, max(c(y,upr),na.rm=T) + 0.1)
   plot(x, y, pch=16, cex=0.2, ylim=ylm, ylab='Airscore \u00B1 95% CI',
@@ -318,50 +355,72 @@ dev.off()
 }
 
 ### plot bootstrapped airscores vs richness, then CMAQ
-png('./fig/fig_01_CIs_richness-CMAQ.png',
+png('./fig/fig_01_CIs_richness-CMAQ-n.png',
     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
-o <- order(d$sr, d$cmaq_n_3yroll)
-plot_ci(b[o,], xlab='Sites, ordered by richness then CMAQ N dep')
-csr <- cumsum(table(d$sr))[1:27]
-text(c(0,csr)+diff(c(0,csr,length(d$sr)))*0.5,17,labels=c(4:30,'>30'),
+o <- order(dn$sr, dn$cmaq_n_3yroll)
+plot_ci(dn[o,], xlab='Sites, ordered by richness then CMAQ N dep')
+csr <- cumsum(table(dn$sr))[1:27]
+text(c(0,csr)+diff(c(0,csr,length(dn$sr)))*0.5,17,labels=c(4:30,'>30'),
      cex=0.5)
 abline(v=csr, col=2)
 dev.off()
+png('./fig/fig_01_CIs_richness-CMAQ-s.png',
+    wid=14.0, hei=5, uni='in', res=700, bg='transparent')
+set_par_mercury(1, pty='m')
+o <- order(ds$sr, ds$cmaq_s_3yroll)
+plot_ci(ds[o,], xlab='Sites, ordered by richness then CMAQ S dep')
+csr <- cumsum(table(ds$sr))[1:27]
+text(c(0,csr)+diff(c(0,csr,length(ds$sr)))*0.5,17,labels=c(4:30,'>30'),
+     cex=0.5)
+abline(v=csr, col=2)
+dev.off()
+
 
 ### plot bootstapped airscores vs observed CMAQ
-png('./fig/fig_02_CIs_CMAQ.png',
+png('./fig/fig_02_CIs_CMAQ-n.png',
     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
 set_par_mercury(1, pty='m')
-o <- order(d$cmaq_n_3yroll, d$sr)
-plot_ci(b[o,], xlab='Sites, ordered by CMAQ N dep')
-csr <- cumsum(table(round(d$cmaq_n_3yroll[o])))[1:15]
-text(c(0,csr)+diff(c(0,csr,length(d$sr)))*0.5, 17, labels=c(1:15,'>15'),
+o <- order(dn$cmaq_n_3yroll, dn$sr)
+plot_ci(dn[o,], xlab='Sites, ordered by CMAQ N dep')
+csr <- cumsum(table(round(dn$cmaq_n_3yroll[o])))[1:15]
+text(c(0,csr)+diff(c(0,csr,length(dn$sr)))*0.5, 17, labels=c(1:15,'>15'),
+     cex=0.5)
+abline(v=csr, col=2)
+dev.off()
+png('./fig/fig_02_CIs_CMAQ-s.png',
+    wid=14.0, hei=5, uni='in', res=700, bg='transparent')
+set_par_mercury(1, pty='m')
+o <- order(ds$cmaq_n_3yroll, ds$sr)
+plot_ci(ds[o,], xlab='Sites, ordered by CMAQ S dep')
+csr <- cumsum(table(round(ds$cmaq_s_3yroll[o])))[1:15]
+text(c(0,csr)+diff(c(0,csr,length(ds$sr)))*0.5, 17, labels=c(1:15,'>15'),
      cex=0.5)
 abline(v=csr, col=2)
 dev.off()
 
-### zoom-in
-png('./fig/fig_01_CIs_zoom_SR11.png',
-    wid=4.5, hei=4.5, uni='in', res=700, bg='transparent')
-set_par_mercury(1, pty='s')
-o   <- order(d$cmaq_n_3yroll)
-i   <- which(d$sr==11)
-set.seed(121)
-i   <- sort(sample(i,size=50))
-tci <- b[o,]
-tci <- tci[i,]
-`plot_ci` <- function (z, ...) {
-  y   <- z[,1]
-  lwr <- z[,2]
-  upr <- z[,3]
-  x   <- 1:NROW(z)
-  ylm <- c(min(c(y,lwr),na.rm=T) - 0.4, max(c(y,upr),na.rm=T) + 0.1)
-  plot(x, y, pch=16, cex=0.5, ylim=ylm, ylab='Airscore \u00B1 95% CI',
-       xaxs='r', yaxs='r', xaxt='n', ...)
-  segments(x0=x, x1=x, y0=lwr, y1=upr, lwd=0.5, lend='butt')
-}
-plot_ci(tci, xlab='Sites, ordered by CMAQ N deposition')
-dev.off()
+
+# ### zoom-in
+# png('./fig/fig_01_CIs_zoom_SR11.png',
+#     wid=4.5, hei=4.5, uni='in', res=700, bg='transparent')
+# set_par_mercury(1, pty='s')
+# o   <- order(dn$cmaq_n_3yroll)
+# i   <- which(dn$sr==11)
+# set.seed(121)
+# i   <- sort(sample(i,size=50))
+# tci <- dn[o,]
+# tci <- tci[i,]
+# `plot_ci` <- function (z, ...) {
+#   y   <- z$mean
+#   lwr <- z$lwr
+#   upr <- z$upr
+#   x   <- 1:NROW(z)
+#   ylm <- c(min(c(y,lwr),na.rm=T) - 0.4, max(c(y,upr),na.rm=T) + 0.1)
+#   plot(x, y, pch=16, cex=0.5, ylim=ylm, ylab='Airscore \u00B1 95% CI',
+#        xaxs='r', yaxs='r', xaxt='n', ...)
+#   segments(x0=x, x1=x, y0=lwr, y1=upr, lwd=0.5, lend='butt')
+# }
+# plot_ci(tci, xlab='Sites, ordered by CMAQ N deposition')
+# dev.off()
 
 ####    END    ####
