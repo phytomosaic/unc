@@ -1,0 +1,5 @@
+"","N vs spp_rich","N vs spprich_n_sens","N vs abun_cyano","N vs abun_forage","S vs spp_rich","S vs spprich_s_sens","S vs abun_cyano","S vs abun_forage"
+"CL_fitted",5.97,2.95,1.91,2.1,8.52,2.75,2.53,2.5
+"2.5%",4.44,2.63,1.29,1.8,7.11,2.55,2.1,2.41
+"97.5%",21.35,3.36,29.34,28.62,10.87,2.99,3.11,2.6
+"pval",0.49675,0.4889,0.48844,0.4777,0.49655,0.49904,0.50026,0.48244
