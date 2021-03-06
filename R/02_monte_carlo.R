@@ -12,98 +12,96 @@ require(ecole)        # for plotting and name handling
 require(quantreg)     # for 90th percentile regressions
 load('./data/d.rda')  # site data
 
-# ### NB: Peter originally used N from calibration eqn, here we use CMAQ instead
-# ecole::set_par_mercury(3)
-# plot(d$cmaq_n_3yroll, d$n_lich_kghay) ; abline(0,1)
-# hist(d$cmaq_n_3yroll, breaks=seq(0,30,by=0.5))
-# hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5))
+# ### NB: PRN originally used N from calibration eqn, here we use CMAQ instead
+# hist(d$cmaq_n_3yroll, breaks=seq(0,30,by=0.5), col='#00000050')
+# hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5), add=T, col='#00000050')
 
 ### rename columns
-onm <- c('spprich_epimac',
-         'spprich_oligo', 'spprich_s_sens', 'abun_cyano', 'abun_forage',
-         'cmaq_n_3yroll', 'cmaq_s_3yroll')
-nnm <- c('spp_rich',
-         'spprich_n_sens', 'spprich_s_sens', 'abun_cyano', 'abun_forage',
-         'N', 'S')
+onm <- c('spprich_epimac','spprich_oligo','spprich_s_sens','abun_cyano',
+         'abun_forage', 'cmaq_n_3yroll', 'cmaq_s_3yroll')
+nnm <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano',
+         'abun_forage', 'N', 'S')
 names(d)[match(onm,names(d))] <- nnm
-nnm <- c(nnm, 'meanmaxaugt5y_c','meanmindect5y_c','meanppt5y_cm',
-         'ubc_td','ubc_cmd','lat','lon') # keep climate columns
-range(d$lat) # 30.06993 63.80750
+nnm <- c(nnm, 'meanmaxaugt5y_c',
+         'meanmindect5y_c',
+         'meanppt5y_cm',
+         'ubc_td',
+         'ubc_cmd',
+         'lat','lon') # keep climate columns
 
 ### fill NA to 0 in diversity measures
 j <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano','abun_forage')
 d[,j] <- sapply(d[,j], function(x) { x[is.na(x)] <- 0 ; return(x) })
 
+# ### trim a few extremely high outlying deposition values
+# d$N[d$N > 20] <- NA
+# d$S[d$S > 45] <- NA
+
 ### remove nonstandard and species-poor plots
 d <- d[d$plottype == 'Standard',]
 d <- d[d$fia_prot==1,]
 d <- d[,nnm]              # keep only used columns
-d <- na.omit(d)           # keep only complete rows
+d <- na.omit(d)           # keep only complete rows (omits AK without climate)
 d <- d[d$spp_rich > 4, ]  # drop species-poor plots ! ! ! CAUTION ! ! !
-range(d$lat) # 30.71974 49.19305
+range(d$lat)              # effectively CONUS
+dim(d)                    # 5422 sites included
 
-### fit 90th quantile regression models
-fmla <- as.formula('spp_rich ~ poly(N, 2, raw=T)') # formula
-m    <- quantreg::rq(fmla, tau=0.90, data=d)       # focal model
-mval <- max(m$fitted.values)          # maximum species richness
-v    <- c(0, 0.10, 0.20, 0.50, 0.80)  # 0,5,10,20,50,80% thresholds
-sr_decline <- mval - (mval * v)       # incremental richness decline
-names(sr_decline) <- v                # clean up names
-ndep <- seq(0.1, 30, by=0.01)           # sequence of possible N dep
-ci <- predict(m, data.frame(N=ndep), type='none', interval='conf') # *frequentist* CI
-# set_par_mercury(1)  ;  plot(d$N, d$spp_rich)  ;  points(d$N, fitted(m), col=3)
-# ndep where species decline matches fit/lwr/upr (to nearest 0.01 kghay)
-CL  <- sapply(sr_decline, function(x) ndep[which.min(abs(c(ci[,'fit']) - x))])
-lwr <- sapply(sr_decline, function(x) ndep[which.min(abs(c(ci[,'lower']) - x))])
-upr <- sapply(sr_decline, function(x) ndep[which.min(abs(c(ci[,'higher']) - x))])
-data.frame(perc_decline=v, sr_decline, CL, lwr, upr) # <-- final CRITICAL LOADS
+### Monte Carlo resampling of parametric coefficients
+`monte_carlo` <- function(fmla, sek = seq(0.1, 30, by=0.01), n=99999, ...) {
+   cat('now doing', format(fmla), '...\n')
+   mod    <- quantreg::rq(fmla, tau=0.90, data=d) # focal model
+   crit   <- 0.20                               # critical species decline = 20%
+   newdat <- data.frame(sek)
+   colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
+   pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
+   p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))  # percent decline from max
+   CL  <- sek[which.min(abs(p - crit))]        # CL is N dep that's closest
+   cx  <- coefficients(mod)  # OLD --> 32.08192918  -1.19453724  0.01107993
+   se  <- summary(mod)$coefficients[,'Std. Error'] * 1.0 # plug-in parameter SE
+   set.seed(1926)             # sample from parameter prior distributions = b
+   b   <- data.frame(b0=rnorm(n, cx[1], se[1]), # 5
+                      b1=rnorm(n, cx[2], se[2]), # 0.1
+                      b2=rnorm(n, cx[3], se[3])) # 0.01
+   `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
+   CLs <- mapply(function(b0, b1, b2) {    # fit polynomial w random parameters
+      yhat <- f(b0, b1, b2, N=sek)          # fitted values for richness
+      p    <-  (1 - yhat / max(yhat))       # percent decline from max
+      return(sek[which.min(abs(p - crit))]) # CL is N dep that's closest
+   }, b[,1], b[,2], b[,3])
+   ci   <- round(quantile(CLs, probs=c(0.025,0.975)),2)
+   pval <- (sum(CLs > CL) + 1) / (length(CLs) + 1)
+   return(list(stats=c(CL_fitted=CL, ci, pval=pval), CLs=CLs))
+}
+ys <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano','abun_forage')
+ys <- ys[c(1,2,4,5,1,3,4,5)]
+xs <- c(rep('N',4), rep('S',4))
+fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
+mc <- lapply(fmla_lst, function(i) { monte_carlo(i) })
 
-### uncertainty of CLs - Monte Carlo resampling of parametric coefficients
-crit <- 0.20               # critical species decline = 20%
-ndep <- seq(0,25,by=0.05)  # vector of possible N dep
-(cx  <- coefficients(m))   # OLD --> 32.08192918  -1.19453724  0.01107993
-(se  <- summary(m)$coefficients[,'Std. Error']) * 0.50 # plug-in SE of parameters?
-n    <- 999                # n replicates
-set.seed(1926)             # sample from parameter prior distributions = b
-# b <- data.frame(b0=rnorm(n, cx[1], 5),
-#                 b1=rnorm(n, cx[2], 0.1),
-#                 b2=rnorm(n, cx[3], 0.01))
-b <- data.frame(b0=rnorm(n, cx[1], se[1]),
-                b1=rnorm(n, cx[2], se[2]),
-                b2=rnorm(n, cx[3], se[3]))
-`f` <- function(b0, b1, b2, N=ndep) { b0 + b1*N + b2*N^2 } # polynomial function
-CLs <- mapply(function(b0, b1, b2) {   # fit polynomial w random parameters
-   yhat <- f(b0, b1, b2, N=ndep)       # fitted values for richness
-   mval <- max(yhat)                   # maximum species richness
-   v    <- crit                        # 20% change at CL
-   p    <-  (1 - yhat / mval)          # percent decline along N dep
-   CL   <- ndep[which.min(abs(p - v))] # CL is N dep that's closest
-   return(CL) }, b[,1], b[,2], b[,3])
-# histogram and Monte Carlo p-value
-hist(CLs, breaks=seq(0,99,by=0.1), main='', prob=F, ylab='Frequency',
-     xlab=expression(Critical ~ Loads ~ (kg ~ N ~ ha^{-1} ~ y^{-1})),
-     xlim=c(0,25), col='grey', yaxs='i') ; box(bty='L')
-abline(v=CL[names(CL)==crit], col='red', lwd=3)
-pval  <- paste0('p = ', (sum(CLs > CL[names(CL)==crit]) + 1) / (length(CLs) + 1))
-seval <- paste0('SE = ', round(sd(CLs),2)) # SEM = SD of Monte Carlo CLs
-(cirng <- round(quantile(CLs, probs=c(0.025,0.975)),2))
-cival <- paste0('CI = ', cirng[1], ' - ', cirng[2]) #
-# mnval <- paste0('Mean = ', round(mean(CLs),2)) # mean of Monte Carlo CLs
-add_text(0.7, 0.85, labels=pval)  # p-value
-# add_text(0.7, 0.78, labels=mnval) # mean
-add_text(0.7, 0.78, labels=seval) # SE-value
-add_text(0.7, 0.71, labels=cival) # SE-value
-# dev.off()
+### summary table
+(tab <- sapply(mc, `[[`, 1))
+colnames(tab) <- paste0(xs, ' vs ', ys)
+write.csv(tab, file='./fig/tab_02_monte_carlo_output.csv')
 
-
-### TODO: repeat for all CLs...
-
-
-### TODO: break out exceedances by region
-
-
-
-
-
+### boxplot of Monte Carlo CLs
+s     <- stack(data.frame(sapply(mc, `[[`, 2)))
+s$ind <- factor(s$ind, labels=LETTERS[1:length(mc)])
+`bxplt` <- function(CEX = 0.7, ...) {
+   plot(s$ind, s$values, outcex=0.4, boxwex=0.3, boxfill='#c1c1c1', outpch=16,
+        outcol=NA, whisklty=1, staplewex=0, xlab='CL Model', xaxs='i',
+        pty='s', box.lty=1, mgp=c(CEX+1.4,0.4,0), tcl=-0.2, las=1, bty='L',
+        cex=CEX, cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
+}
+png('./fig/fig_02_bxplt_monte_carlo.png',
+    wid=4, hei=4, units='in', bg='transparent', res=700)
+set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
+ylab <- expression(Randomization~CLs~(kg~N~ha^-1~y^-1))
+bxplt(ylab=ylab, ylim=c(0,12.75), medlwd=1)
+yys <- rep(c('Total spp. richness','Sensitive spp. richness',
+             'Cyanolichen abundance','Forage lichen abundance'), 2)
+legend('topleft', paste0(unique(s$ind), ' = ', paste0(xs, ' vs ', yys)),
+       col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
+points(1:8, tab[1,], pch=23, bg='white', cex=0.5)
+dev.off()
 
 ####    END    ####
