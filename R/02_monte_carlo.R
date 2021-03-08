@@ -12,9 +12,11 @@ require(ecole)        # for plotting and name handling
 require(quantreg)     # for 90th percentile regressions
 load('./data/d.rda')  # site data
 
-# ### NB: PRN originally used N from calibration eqn, here we use CMAQ instead
+# ### NB: PRN originally used N from calibration eqn? here we use CMAQ instead
 # hist(d$cmaq_n_3yroll, breaks=seq(0,30,by=0.5), col='#00000050')
 # hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5), add=T, col='#00000050')
+#
+# ### PRN used thresholds for each model: N=12 and S=20 (kg ha y)
 
 ### rename columns
 onm <- c('spprich_epimac','spprich_oligo','spprich_s_sens','abun_cyano',
@@ -22,70 +24,96 @@ onm <- c('spprich_epimac','spprich_oligo','spprich_s_sens','abun_cyano',
 nnm <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano',
          'abun_forage', 'N', 'S')
 names(d)[match(onm,names(d))] <- nnm
-nnm <- c(nnm, 'meanmaxaugt5y_c',
-         'meanmindect5y_c',
-         'meanppt5y_cm',
-         'ubc_td',
-         'ubc_cmd',
-         'lat','lon') # keep climate columns
+nnm <- c(nnm,'ubc_td','lat','lon') # keep if has lat/lon and climate info
 
 ### fill NA to 0 in diversity measures
 j <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano','abun_forage')
 d[,j] <- sapply(d[,j], function(x) { x[is.na(x)] <- 0 ; return(x) })
 
-# ### trim a few extremely high outlying deposition values
-# d$N[d$N > 20] <- NA
-# d$S[d$S > 45] <- NA
+# ### pick by PRN's megadbid
+# u <- paste0('https://raw.githubusercontent.com/phytomosaic/Lichen_CL_quantile',
+#             '_regression/master/output/LichDb_sFncGrpSens_All_Abun.csv')
+# fnm <- tempfile()
+# download.file(u, fnm, method = "curl")
+# f <- read.csv(fnm)
+# i <- f$megadbid
+# rm(u,fnm,f)
+# d <- d[d$megadbid %in% i, nnm] # keep only used columns, and megadb's from PRN
 
 ### remove nonstandard and species-poor plots
 d <- d[d$plottype == 'Standard',]
 d <- d[d$fia_prot==1,]
 d <- d[,nnm]              # keep only used columns
-d <- na.omit(d)           # keep only complete rows (omits AK without climate)
-d <- d[d$spp_rich > 4, ]  # drop species-poor plots ! ! ! CAUTION ! ! !
-range(d$lat)              # effectively CONUS
-dim(d)                    # 5422 sites included
+d <- na.omit(d)           # keep only complete rows (omits w/o climate)
+d <- d[d$spp_rich > 4, ]  # drop species-poor plots
+range(d$lat)              # AK and CONUS
+dim(d)                    # 5994 sites included
 
 ### Monte Carlo resampling of parametric coefficients
-`monte_carlo` <- function(fmla, sek = seq(0.1, 30, by=0.01), n=99999, ...) {
+`monte_carlo` <- function(fmla,n=99999,do_plot=T,...) {
    cat('now doing', format(fmla), '...\n')
-   mod    <- quantreg::rq(fmla, tau=0.90, data=d) # focal model
-   crit   <- 0.20                               # critical species decline = 20%
-   newdat <- data.frame(sek)
+   xvar <- substr(gsub(".*poly\\(", "", format(fmla)), 1,1)
+   sek <- seq(0.1,  max(d[,xvar], na.rm=T), by=0.01)
+   mod    <- quantreg::rq(fmla,tau=0.90,data=d) # focal model
+   crit   <- 0.20                               # critical decline = 20%
+   newdat <- data.frame(sek)                    # sequence
    colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
    pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
-   p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))  # percent decline from max
-   CL  <- sek[which.min(abs(p - crit))]        # CL is N dep that's closest
-   cx  <- coefficients(mod)  # OLD --> 32.08192918  -1.19453724  0.01107993
+   `nadir` <- function(x) { # trim to parabola nadir (forbid increasing curve)
+      is_decr <- sapply(2:length(x), function(i) (x[i] < x[i-1]) * 1)
+      if(all(is_decr == 1)) length(x) else which.min(is_decr)
+   }
+   i   <- nadir(pr[,'fit'])                     # index the nadir
+   sek <- sek[1:i]                              # trimmed sequence
+   pr  <- pr[1:i,]                              # trimmed predicted values
+   p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))   # percent decline from max
+   CL  <- sek[which.min(abs(p - crit))]         # CL is N dep that's closest
+   cx  <- coefficients(mod)                     # model coefficients
    se  <- summary(mod)$coefficients[,'Std. Error'] * 1.0 # plug-in parameter SE
-   set.seed(1926)             # sample from parameter prior distributions = b
-   b   <- data.frame(b0=rnorm(n, cx[1], se[1]), # 5
-                      b1=rnorm(n, cx[2], se[2]), # 0.1
-                      b2=rnorm(n, cx[3], se[3])) # 0.01
+   set.seed(1926)                               # sample from parameter priors
+   b   <- data.frame(b0=rnorm(n, cx[1], se[1]), # intercept
+                     b1=rnorm(n, cx[2], se[2]), # slope
+                     b2=rnorm(n, cx[3], se[3])) # curvature
    `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
-   CLs <- mapply(function(b0, b1, b2) {    # fit polynomial w random parameters
-      yhat <- f(b0, b1, b2, N=sek)          # fitted values for richness
-      p    <-  (1 - yhat / max(yhat))       # percent decline from max
-      return(sek[which.min(abs(p - crit))]) # CL is N dep that's closest
-   }, b[,1], b[,2], b[,3])
+   CLs <- mapply(function(b0, b1, b2) {         # fit polynomial function
+      yhat <- f(b0, b1, b2, N=sek)              # fitted values for richness
+      p    <-  (1 - yhat / max(yhat))           # percent decline from max
+      return(sek[which.min(abs(p - crit))])     # CL is N dep that's closest
+   }, b[,1], b[,2], b[,3])                      # random parameters
    ci   <- round(quantile(CLs, probs=c(0.025,0.975)),2)
    pval <- (sum(CLs > CL) + 1) / (length(CLs) + 1)
-   return(list(stats=c(CL_fitted=CL, ci, pval=pval), CLs=CLs))
+   if(do_plot) {
+      xvar <- substr(gsub(".*poly\\(", "", format(fmla)), 1,1)
+      yvar <- gsub("\\ ~.*", "", format(fmla))
+      plot(d[,xvar],d[,yvar],pch=16,cex=0.7,col='#00000050',ylab=yvar,xlab=xvar)
+      lines(sek, f(cx[1], cx[2], cx[3]), col='cyan', lwd=2)
+      abline(v=CL, col='red')
+      abline(h=pr[,'fit'][which.min(abs(sek - CL))], col='red')
+      points(CL, pr[,'fit'][which.min(abs(sek - CL))],pch=21,bg='gold',cex=1.5)
+      ecole::add_text(0.60, 0.90, paste0('CL = ', round(CL,3)))
+   }
+   return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
 }
 ys <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano','abun_forage')
-ys <- ys[c(1,2,4,5,1,3,4,5)]
+ys <- ys[c(1,2,5,4,1,3,5,4)]
 xs <- c(rep('N',4), rep('S',4))
 fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
-mc <- lapply(fmla_lst, function(i) { monte_carlo(i) })
+
+### do the Monte Carlo resampling
+png('./fig/fig_01_monte_carlo_fitlines.png',
+    wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
+set_par_mercury(8, mfrow=c(2,4))
+mc <- lapply(fmla_lst, function(i) { monte_carlo(i, n=999) }) # ! TIMEWARN ! ! !
+dev.off()
 
 ### summary table
-(tab <- sapply(mc, `[[`, 1))
-colnames(tab) <- paste0(xs, ' vs ', ys)
+round(tab <- sapply(mc, `[[`, 1),3)
+colnames(tab) <- paste0(xs, '_vs_', ys)
 write.csv(tab, file='./fig/tab_02_monte_carlo_output.csv')
 
-### boxplot of Monte Carlo CLs
-s     <- stack(data.frame(sapply(mc, `[[`, 2)))
-s$ind <- factor(s$ind, labels=LETTERS[1:length(mc)])
+### boxplot of Monte Carlo CLs, grouped by CL model
+s       <- stack(data.frame(sapply(mc, `[[`, 2)))
+s$ind   <- factor(s$ind, labels=LETTERS[1:length(mc)])
 `bxplt` <- function(CEX = 0.7, ...) {
    plot(s$ind, s$values, outcex=0.4, boxwex=0.3, boxfill='#c1c1c1', outpch=16,
         outcol=NA, whisklty=1, staplewex=0, xlab='CL Model', xaxs='i',
@@ -103,5 +131,48 @@ legend('topleft', paste0(unique(s$ind), ' = ', paste0(xs, ' vs ', yys)),
        col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
 points(1:8, tab[1,], pch=23, bg='white', cex=0.5)
 dev.off()
+
+### below is optional...
+### homemade bootstrap of SITES (rq already can do this....)
+`boot_the_sites` <- function(fmla, sek = seq(0.1, 30, by=0.01), nboot=99,
+                             do_plot = TRUE, ...) {
+   cat('now doing', format(fmla), '...\n')
+   ### initialize the main plot
+   xvar <- substr(gsub(".*poly\\(", "", format(fmla)), 1,1)
+   yvar <- gsub("\\ ~.*", "", format(fmla))
+   plot(d[,xvar], d[,yvar], pch=16, cex=0.7, col='#00000050',
+        ylab=yvar, xlab=xvar)
+   ### sample sites with replacement
+   `fit_mod` <- function(...){
+      db  <- d[sample(1:NROW(d), replace=T),]      # resampling step
+      mod <- quantreg::rq(fmla, tau=0.90, data=db) # focal model
+      crit   <- 0.20                               # critical species decline = 20%
+      newdat <- data.frame(sek)
+      colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
+      pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
+      p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))  # percent decline from max
+      CL  <- sek[which.min(abs(p - crit))]        # CL is N dep that's closest
+      cx  <- coefficients(mod)  # OLD --> 32.08192918  -1.19453724  0.01107993
+      `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
+      if(do_plot) {
+         lines(sek, f(cx[1], cx[2], cx[3]), col='#00000010', lwd=2)
+         abline(v=CL, col='#FF000010')
+         points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21, bg='#FFD70020', cex=1.5)
+      }
+      # return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
+   }
+   replicate(n=nboot, expr=fit_mod())
+}
+ys <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano','abun_forage')
+ys <- ys[c(1,2,4,5,1,3,4,5)]
+xs <- c(rep('N',4), rep('S',4))
+fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
+### do the bootstrap resampling
+png('./fig/fig_01_bootstrap_fitlines.png',
+    wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
+set_par_mercury(8, mfrow=c(2,4))
+mc <- lapply(fmla_lst, function(i) { boot_the_sites(i) }) # ! TIMEWARN ! ! !
+dev.off()
+
 
 ####    END    ####
