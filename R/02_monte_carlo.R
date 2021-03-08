@@ -162,7 +162,7 @@ dev.off()
       cx  <- coefficients(mod)  # OLD --> 32.08192918  -1.19453724  0.01107993
       `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
       if(do_plot) {
-         lines(sek, f(cx[1], cx[2], cx[3]), col='#00000010', lwd=2)
+         lines(sek, f(cx[1], cx[2], cx[3]), col='#00FFFF10', lwd=2)
          abline(v=CL, col='#FF000010')
          points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21, bg='#FFD70020', cex=1.5)
       }
