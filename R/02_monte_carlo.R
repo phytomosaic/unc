@@ -150,6 +150,13 @@ dev.off()
       newdat <- data.frame(sek)
       colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
       pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
+      `nadir` <- function(x) { # trim to parabola nadir (forbid increasing curve)
+         is_decr <- sapply(2:length(x), function(i) (x[i] < x[i-1]) * 1)
+         if(all(is_decr == 1)) length(x) else which.min(is_decr)
+      }
+      i   <- nadir(pr[,'fit'])                     # index the nadir
+      sek <- sek[1:i]                              # trimmed sequence
+      pr  <- pr[1:i,]                              # trimmed predicted values
       p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))  # percent decline from max
       CL  <- sek[which.min(abs(p - crit))]        # CL is N dep that's closest
       cx  <- coefficients(mod)  # OLD --> 32.08192918  -1.19453724  0.01107993
