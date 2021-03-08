@@ -170,10 +170,6 @@ dev.off()
    }
    replicate(n=nboot, expr=fit_mod())
 }
-ys <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano','abun_forage')
-ys <- ys[c(1,2,4,5,1,3,4,5)]
-xs <- c(rep('N',4), rep('S',4))
-fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
 ### do the bootstrap resampling
 png('./fig/fig_01_bootstrap_fitlines.png',
     wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
