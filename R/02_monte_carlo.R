@@ -122,7 +122,7 @@ s$ind   <- factor(s$ind, labels=LETTERS[1:length(mc)])
 }
 png('./fig/fig_02_bxplt_monte_carlo.png',
     wid=4, hei=4, units='in', bg='transparent', res=700)
-set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
+set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0), bg='grey')
 ylab <- expression(Randomization~CLs~(kg~N~ha^-1~y^-1))
 bxplt(ylab=ylab, ylim=c(0,12.75), medlwd=1)
 yys <- rep(c('Total spp. richness','Sensitive spp. richness',
@@ -130,6 +130,8 @@ yys <- rep(c('Total spp. richness','Sensitive spp. richness',
 legend('topleft', paste0(unique(s$ind), ' = ', paste0(xs, ' vs ', yys)),
        col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
 points(1:8, tab[1,], pch=23, bg='white', cex=0.5)
+# cl_2019 <- c(3.5, 3.1, 1.9, 1.3, 6.0, 2.5, 2.6, 2.3) # add CLs from the 2019 ms?
+# points(1:8, cl_2019, pch=23, bg='red', cex=0.6)     # add CLs from the 2019 ms?
 dev.off()
 
 ### below is optional...
