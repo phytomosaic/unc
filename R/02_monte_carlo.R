@@ -19,7 +19,8 @@ load('./data/d.rda')  # site data
 # ### PRN used thresholds for each model: N=12 and S=20 (kg ha y)
 
 ### rename columns
-onm <- c('spprich_epimac','spprich_oligo','spprich_s_sens','abun_cyano',
+onm <- c('spprich_total', # 'spprich_epimac',
+         'spprich_oligo','spprich_s_sens','abun_cyano',
          'abun_forage', 'cmaq_n_3yroll', 'cmaq_s_3yroll')
 nnm <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano',
          'abun_forage', 'N', 'S')
@@ -103,11 +104,11 @@ fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
 png('./fig/fig_01_monte_carlo_fitlines.png',
     wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
 set_par_mercury(8, mfrow=c(2,4))
-mc <- lapply(fmla_lst, function(i) { monte_carlo(i, n=999) }) # ! TIMEWARN ! ! !
+mc <- lapply(fmla_lst, function(i) { monte_carlo(i, n=99999) }) # ! TIMEWARN ! ! !
 dev.off()
 
 ### summary table
-round(tab <- sapply(mc, `[[`, 1),3)
+(tab <- round(sapply(mc, `[[`, 1), 3))
 colnames(tab) <- paste0(xs, '_vs_', ys)
 write.csv(tab, file='./fig/tab_02_monte_carlo_output.csv')
 
@@ -122,9 +123,9 @@ s$ind   <- factor(s$ind, labels=LETTERS[1:length(mc)])
 }
 png('./fig/fig_02_bxplt_monte_carlo.png',
     wid=4, hei=4, units='in', bg='transparent', res=700)
-set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0), bg='grey')
+set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
 ylab <- expression(Randomization~CLs~(kg~N~ha^-1~y^-1))
-bxplt(ylab=ylab, ylim=c(0,12.75), medlwd=1)
+bxplt(ylab=ylab, ylim=c(0,9.0), medlwd=1)
 yys <- rep(c('Total spp. richness','Sensitive spp. richness',
              'Cyanolichen abundance','Forage lichen abundance'), 2)
 legend('topleft', paste0(unique(s$ind), ' = ', paste0(xs, ' vs ', yys)),
@@ -176,7 +177,7 @@ dev.off()
 png('./fig/fig_01_bootstrap_fitlines.png',
     wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
 set_par_mercury(8, mfrow=c(2,4))
-mc <- lapply(fmla_lst, function(i) { boot_the_sites(i) }) # ! TIMEWARN ! ! !
+bc <- lapply(fmla_lst, function(i) { boot_the_sites(i) }) # ! TIMEWARN ! ! !
 dev.off()
 
 
