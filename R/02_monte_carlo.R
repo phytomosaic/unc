@@ -2,7 +2,7 @@
 #
 #  CLAD WG-2 -- estimating uncertainty -- Monte Carlo parameter resampling
 #
-#    Rob Smith, phytomosaic@gmail.com, 12 July 2020
+#    Rob Smith, phytomosaic@gmail.com, 09 Mar 2021
 #
 ##      GNU General Public License, Version 3.0    ###################
 
@@ -15,12 +15,10 @@ load('./data/d.rda')  # site data
 # ### NB: PRN originally used N from calibration eqn? here we use CMAQ instead
 # hist(d$cmaq_n_3yroll, breaks=seq(0,30,by=0.5), col='#00000050')
 # hist(d$n_lich_kghay, breaks=seq(0,30,by=0.5), add=T, col='#00000050')
-#
 # ### PRN used thresholds for each model: N=12 and S=20 (kg ha y)
 
 ### rename columns
-onm <- c('spprich_total', # 'spprich_epimac',
-         'spprich_oligo','spprich_s_sens','abun_cyano',
+onm <- c('spprich_total','spprich_oligo','spprich_s_sens','abun_cyano',
          'abun_forage', 'cmaq_n_3yroll', 'cmaq_s_3yroll')
 nnm <- c('spp_rich','spprich_n_sens','spprich_s_sens','abun_cyano',
          'abun_forage', 'N', 'S')
@@ -35,11 +33,9 @@ d[,j] <- sapply(d[,j], function(x) { x[is.na(x)] <- 0 ; return(x) })
 # u <- paste0('https://raw.githubusercontent.com/phytomosaic/Lichen_CL_quantile',
 #             '_regression/master/output/LichDb_sFncGrpSens_All_Abun.csv')
 # fnm <- tempfile()
-# download.file(u, fnm, method = "curl")
+# download.file(u, fnm, method = 'curl')
 # f <- read.csv(fnm)
-# i <- f$megadbid
-# rm(u,fnm,f)
-# d <- d[d$megadbid %in% i, nnm] # keep only used columns, and megadb's from PRN
+# d <- d[d$megadbid %in% f$megadbid, nnm] # keep only megadb's from PRN
 
 ### remove nonstandard and species-poor plots
 d <- d[d$plottype == 'Standard',]
@@ -48,13 +44,13 @@ d <- d[,nnm]              # keep only used columns
 d <- na.omit(d)           # keep only complete rows (omits w/o climate)
 d <- d[d$spp_rich > 4, ]  # drop species-poor plots
 range(d$lat)              # AK and CONUS
-dim(d)                    # 5994 sites included
+dim(d)                    # 6024 sites included
 
 ### Monte Carlo resampling of parametric coefficients
 `monte_carlo` <- function(fmla,n=99999,do_plot=T,...) {
    cat('now doing', format(fmla), '...\n')
-   xvar <- substr(gsub(".*poly\\(", "", format(fmla)), 1,1)
-   sek <- seq(0.1,  max(d[,xvar], na.rm=T), by=0.01)
+   xvar   <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
+   sek    <- seq(0.1,  max(d[,xvar], na.rm=T), by=0.01)
    mod    <- quantreg::rq(fmla,tau=0.90,data=d) # focal model
    crit   <- 0.20                               # critical decline = 20%
    newdat <- data.frame(sek)                    # sequence
@@ -84,8 +80,8 @@ dim(d)                    # 5994 sites included
    ci   <- round(quantile(CLs, probs=c(0.025,0.975)),2)
    pval <- (sum(CLs > CL) + 1) / (length(CLs) + 1)
    if(do_plot) {
-      xvar <- substr(gsub(".*poly\\(", "", format(fmla)), 1,1)
-      yvar <- gsub("\\ ~.*", "", format(fmla))
+      xvar <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
+      yvar <- gsub('\\ ~.*', '', format(fmla))
       plot(d[,xvar],d[,yvar],pch=16,cex=0.7,col='#00000050',ylab=yvar,xlab=xvar)
       lines(sek, f(cx[1], cx[2], cx[3]), col='cyan', lwd=2)
       abline(v=CL, col='red')
@@ -140,16 +136,16 @@ dev.off()
 `boot_the_sites` <- function(fmla, sek = seq(0.1, 30, by=0.01), nboot=99,
                              do_plot = TRUE, ...) {
    cat('now doing', format(fmla), '...\n')
-   ### initialize the main plot
-   xvar <- substr(gsub(".*poly\\(", "", format(fmla)), 1,1)
-   yvar <- gsub("\\ ~.*", "", format(fmla))
+   # initialize the main plot
+   xvar <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
+   yvar <- gsub('\\ ~.*', '', format(fmla))
    plot(d[,xvar], d[,yvar], pch=16, cex=0.7, col='#00000050',
         ylab=yvar, xlab=xvar)
-   ### sample sites with replacement
+   # sample sites with replacement
    `fit_mod` <- function(...){
       db  <- d[sample(1:NROW(d), replace=T),]      # resampling step
       mod <- quantreg::rq(fmla, tau=0.90, data=db) # focal model
-      crit   <- 0.20                               # critical species decline = 20%
+      crit   <- 0.20                               # critical decline = 20%
       newdat <- data.frame(sek)
       colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
       pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
@@ -160,14 +156,15 @@ dev.off()
       i   <- nadir(pr[,'fit'])                     # index the nadir
       sek <- sek[1:i]                              # trimmed sequence
       pr  <- pr[1:i,]                              # trimmed predicted values
-      p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))  # percent decline from max
-      CL  <- sek[which.min(abs(p - crit))]        # CL is N dep that's closest
-      cx  <- coefficients(mod)  # OLD --> 32.08192918  -1.19453724  0.01107993
+      p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))   # percent decline from max
+      CL  <- sek[which.min(abs(p - crit))]         # CL is N dep that's closest
+      cx  <- coefficients(mod)
       `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
       if(do_plot) {
          lines(sek, f(cx[1], cx[2], cx[3]), col='#00FFFF10', lwd=2)
          abline(v=CL, col='#FF000010')
-         points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21, bg='#FFD70020', cex=1.5)
+         points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21,
+                bg='#FFD70020', cex=1.5)
       }
       # return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
    }
