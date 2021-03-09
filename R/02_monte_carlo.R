@@ -106,6 +106,9 @@ dev.off()
 ### summary table
 (tab <- round(sapply(mc, `[[`, 1), 3))
 colnames(tab) <- paste0(xs, '_vs_', ys)
+# 95% variability band range as a percentage relative to each point estimate:
+vb_rng_pct <- round((tab[3,] - tab[2,]) / tab[1,] * 100, 1)
+(tab <- rbind(tab, vb_rng_pct))
 write.csv(tab, file='./fig/tab_02_monte_carlo_output.csv')
 
 ### boxplot of Monte Carlo CLs, grouped by CL model
@@ -130,6 +133,7 @@ points(1:8, tab[1,], pch=23, bg='white', cex=0.5)
 # cl_2019 <- c(3.5, 3.1, 1.9, 1.3, 6.0, 2.5, 2.6, 2.3) # add CLs from the 2019 ms?
 # points(1:8, cl_2019, pch=23, bg='red', cex=0.6)     # add CLs from the 2019 ms?
 dev.off()
+
 
 ### below is optional...
 ### homemade bootstrap of SITES (rq already can do this....)
