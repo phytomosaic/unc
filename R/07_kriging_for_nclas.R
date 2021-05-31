@@ -24,13 +24,8 @@ u  <- viridis::viridis(99)
 dn <- dn[-which(dn$lon > -95 & dn$lon < -90 & dn$lat < 37),]
 ds <- ds[-which(ds$lon > -95 & ds$lon < -90 & ds$lat < 37),]
 
-### remove extreme values for sulfur?
-ds <- ds[-which(ds$lon > -95 & ds$lon < -90 & ds$lat < 37),]
-tail(sort(ds$ci_rng), 40)
-dim(ds)
-sum(ds$ci_rng>10)/NROW(ds) # 2% of values are greater than 10
-set_par(2) ; hist(ds$ci_rng) ; plot(ds$lon, ds$lat)
-points(ds$lon[ds$ci_rng>10], ds$lat[ds$ci_rng>10], col='red')
+### soften extreme values for sulfur
+ds$ci_rng[which(ds$ci_rng>10)] <- 10 + rnorm(sum(ds$ci_rng>10), 0, 0.1)
 
 # template raster is the CMAQ grid
 r             <- raster('~/prj/vuln_gis/gis/ndep_cmaq.tif')
