@@ -129,7 +129,7 @@ yys <- rep(c('Total spp. richness','Sensitive spp. richness',
              'Cyanolichen abundance','Forage lichen abundance'), 2)
 legend('topleft', paste0(unique(s$ind), ' = ', paste0(xs, ' vs ', yys)),
        col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
-points(1:8, tab[1,], pch=23, bg='white', cex=0.5)
+points(1:8, tab[1,], pch=23, bg='white', cex=0.5) # fitted midpoint values
 # cl_2019 <- c(3.5, 3.1, 1.9, 1.3, 6.0, 2.5, 2.6, 2.3) # add CLs from the 2019 ms?
 # points(1:8, cl_2019, pch=23, bg='red', cex=0.6)     # add CLs from the 2019 ms?
 dev.off()
