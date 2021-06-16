@@ -15,3 +15,10 @@ info_contributed/
 
 # presentations
 prezi/
+
+# figures
+fig/
+
+# image files and GIS (GeoTiff) files
+*.tif
+*.png
