@@ -2,7 +2,7 @@
 #
 #  CLAD WG-2 -- estimating uncertainty -- Monte Carlo parameter resampling
 #
-#    Rob Smith, phytomosaic@gmail.com, 09 Mar 2021
+#    Rob Smith, phytomosaic@gmail.com, 16 Jun 2021
 #
 ##      GNU General Public License, Version 3.0    ###################
 
@@ -97,7 +97,7 @@ xs <- c(rep('N',4), rep('S',4))
 fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
 
 ### do the Monte Carlo resampling
-png('./fig/fig_01_monte_carlo_fitlines.png',
+png('./fig/fig_99_monte_carlo_fitlines_trace.png',
     wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
 set_par_mercury(8, mfrow=c(2,4))
 mc <- lapply(fmla_lst, function(i) { monte_carlo(i, n=99999) }) # ! TIMEWARN ! ! !
@@ -106,9 +106,10 @@ dev.off()
 ### summary table
 (tab <- round(sapply(mc, `[[`, 1), 3))
 colnames(tab) <- paste0(xs, '_vs_', ys)
+ci_rng <- tab[3,] - tab[2,] ### RANGE of UNCERTAINTY to report
 # 95% variability band range as a percentage relative to each point estimate:
 vb_rng_pct <- round((tab[3,] - tab[2,]) / tab[1,] * 100, 1)
-(tab <- rbind(tab, vb_rng_pct))
+(tab <- rbind(tab, ci_rng, vb_rng_pct))
 write.csv(tab, file='./fig/tab_02_monte_carlo_output.csv')
 
 ### boxplot of Monte Carlo CLs, grouped by CL model
@@ -121,65 +122,67 @@ s$ind   <- factor(s$ind, labels=LETTERS[1:length(mc)])
         cex=CEX, cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
 }
 png('./fig/fig_02_bxplt_monte_carlo.png',
-    wid=4, hei=4, units='in', bg='transparent', res=700)
+    wid=4, hei=4, units='in', bg='transparent', res=1080)
 set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
-ylab <- expression(Randomization~CLs~(kg~N~ha^-1~y^-1))
+ylab <- expression(Randomization~CLs~(kg~ha^-1~y^-1))
 bxplt(ylab=ylab, ylim=c(0,9.0), medlwd=1)
 yys <- rep(c('Total spp. richness','Sensitive spp. richness',
              'Cyanolichen abundance','Forage lichen abundance'), 2)
 legend('topleft', paste0(unique(s$ind), ' = ', paste0(xs, ' vs ', yys)),
        col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
 points(1:8, tab[1,], pch=23, bg='white', cex=0.5) # fitted midpoint values
-# cl_2019 <- c(3.5, 3.1, 1.9, 1.3, 6.0, 2.5, 2.6, 2.3) # add CLs from the 2019 ms?
-# points(1:8, cl_2019, pch=23, bg='red', cex=0.6)     # add CLs from the 2019 ms?
+# cl_2019 <- c(3.5, 3.1, 1.9, 1.3, 6.0, 2.5, 2.6, 2.3) # add CLs from 2019 ms?
+# points(1:8, cl_2019, pch=23, bg='red', cex=0.6)      # add CLs from 2019 ms?
+# points(1:8, tab[3,], pch=23, bg='blue', cex=0.4)     # add upr CI?
+# points(1:8, tab[2,], pch=23, bg='blue', cex=0.4)     # add lwr CI?
 dev.off()
 
 
-### below is optional...
-### homemade bootstrap of SITES (rq already can do this....)
-`boot_the_sites` <- function(fmla, sek = seq(0.1, 30, by=0.01), nboot=99,
-                             do_plot = TRUE, ...) {
-   cat('now doing', format(fmla), '...\n')
-   # initialize the main plot
-   xvar <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
-   yvar <- gsub('\\ ~.*', '', format(fmla))
-   plot(d[,xvar], d[,yvar], pch=16, cex=0.7, col='#00000050',
-        ylab=yvar, xlab=xvar)
-   # sample sites with replacement
-   `fit_mod` <- function(...){
-      db  <- d[sample(1:NROW(d), replace=T),]      # resampling step
-      mod <- quantreg::rq(fmla, tau=0.90, data=db) # focal model
-      crit   <- 0.20                               # critical decline = 20%
-      newdat <- data.frame(sek)
-      colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
-      pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
-      `nadir` <- function(x) { # trim to parabola nadir (forbid increasing curve)
-         is_decr <- sapply(2:length(x), function(i) (x[i] < x[i-1]) * 1)
-         if(all(is_decr == 1)) length(x) else which.min(is_decr)
-      }
-      i   <- nadir(pr[,'fit'])                     # index the nadir
-      sek <- sek[1:i]                              # trimmed sequence
-      pr  <- pr[1:i,]                              # trimmed predicted values
-      p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))   # percent decline from max
-      CL  <- sek[which.min(abs(p - crit))]         # CL is N dep that's closest
-      cx  <- coefficients(mod)
-      `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
-      if(do_plot) {
-         lines(sek, f(cx[1], cx[2], cx[3]), col='#00FFFF10', lwd=2)
-         abline(v=CL, col='#FF000010')
-         points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21,
-                bg='#FFD70020', cex=1.5)
-      }
-      # return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
-   }
-   replicate(n=nboot, expr=fit_mod())
-}
-### do the bootstrap resampling
-png('./fig/fig_01_bootstrap_fitlines.png',
-    wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
-set_par_mercury(8, mfrow=c(2,4))
-bc <- lapply(fmla_lst, function(i) { boot_the_sites(i) }) # ! TIMEWARN ! ! !
-dev.off()
+
+# ### OPTIONAL: homemade bootstrap of SITES (rq already can do this....)
+# `boot_the_sites` <- function(fmla, sek = seq(0.1, 30, by=0.01), nboot=99,
+#                              do_plot = TRUE, ...) {
+#    cat('now doing', format(fmla), '...\n')
+#    # initialize the main plot
+#    xvar <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
+#    yvar <- gsub('\\ ~.*', '', format(fmla))
+#    plot(d[,xvar], d[,yvar], pch=16, cex=0.7, col='#00000050',
+#         ylab=yvar, xlab=xvar)
+#    # sample sites with replacement
+#    `fit_mod` <- function(...){
+#       db  <- d[sample(1:NROW(d), replace=T),]      # resampling step
+#       mod <- quantreg::rq(fmla, tau=0.90, data=db) # focal model
+#       crit   <- 0.20                               # critical decline = 20%
+#       newdat <- data.frame(sek)
+#       colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
+#       pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
+#       `nadir` <- function(x) { # trim to parabola nadir (forbid increasing curve)
+#          is_decr <- sapply(2:length(x), function(i) (x[i] < x[i-1]) * 1)
+#          if(all(is_decr == 1)) length(x) else which.min(is_decr)
+#       }
+#       i   <- nadir(pr[,'fit'])                     # index the nadir
+#       sek <- sek[1:i]                              # trimmed sequence
+#       pr  <- pr[1:i,]                              # trimmed predicted values
+#       p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))   # percent decline from max
+#       CL  <- sek[which.min(abs(p - crit))]         # CL is N dep that's closest
+#       cx  <- coefficients(mod)
+#       `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
+#       if(do_plot) {
+#          lines(sek, f(cx[1], cx[2], cx[3]), col='#00FFFF10', lwd=2)
+#          abline(v=CL, col='#FF000010')
+#          points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21,
+#                 bg='#FFD70020', cex=1.5)
+#       }
+#       # return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
+#    }
+#    replicate(n=nboot, expr=fit_mod())
+# }
+# ### do the bootstrap resampling
+# png('./fig/fig_99_bootstrap_fitlines.png',
+#     wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
+# set_par_mercury(8, mfrow=c(2,4))
+# bc <- lapply(fmla_lst, function(i) { boot_the_sites(i) }) # ! TIMEWARN ! ! !
+# dev.off()
 
 
 ####    END    ####
