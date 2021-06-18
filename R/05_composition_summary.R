@@ -6,6 +6,7 @@
 #
 ##      GNU General Public License, Version 3.0    ###################
 
+### preamble
 rm(list=ls())
 require(ecole)
 require(scales)
@@ -39,23 +40,17 @@ ds$ecoreg1[ds$ecoreg1 == 'northwestern forested mountains'] <- 'northwest montan
 dn$ecoreg1[dn$ecoreg1 == 'southern semi-arid highlands'] <- 'semi-arid highlands'
 ds$ecoreg1[ds$ecoreg1 == 'southern semi-arid highlands'] <- 'semi-arid highlands'
 
-### *relative* range of variability (percent)
-dn$rv <- dn$ci_rng / dn$med * 100
-ds$rv <- ds$ci_rng / ds$med * 100
+### setup plot labels
+nlab <- expression(N~uncertainty~(kg~ha^-1~y^-1))
+slab <- expression(S~uncertainty~(kg~ha^-1~y^-1))
 
-### setup plot labels (absolute and relative uncertainty)
-nlaba <- expression(atop(NA, atop(textstyle('N absolute uncertainty'),
-                                  textstyle((kg~ha^-1~y^-1)))))
-slaba <- expression(atop(NA, atop(textstyle('S absolute uncertainty'),
-                                  textstyle((kg~ha^-1~y^-1)))))
-nlabr <- expression(atop(NA, atop(textstyle('N relative uncertainty (%)'),
-                                  scriptscriptstyle(''))))
-slabr <- expression(atop(NA, atop(textstyle('S relative uncertainty (%)'),
-                                  scriptscriptstyle(''))))
+### MEAN UNCERTAINTY to report
+mean(dn[,c('ci_rng')]) # 3.22 kg N ha y
+mean(ds[,c('ci_rng')]) # 3.34 kg S ha y
 
-### calc site *exceedances*: bootstrapped median minus the fixed CL
-dn$exc <- dn$med - 1.5   # N airscores CL = 1.5
-ds$exc <- ds$med - 2.7   # S airscores CL = 2.7
+# ### calc site *exceedances*: bootstrapped median minus the fixed CL
+# dn$exc <- dn$med - 1.5   # N airscores CL = 1.5
+# ds$exc <- ds$med - 2.7   # S airscores CL = 2.7
 
 ### split 'eastern temperate forest' ecoregion to north vs south
 a <- c('mississippi alluvial and southeast usa coastal plains',
@@ -67,12 +62,12 @@ rm(a,b)
 
 ### setup boxplot by region
 a <- data.frame( # summary table
-  aggregate(dn[,c('exc','ci_rng','rv')], list(ecoregion=dn$ecoreg1), median),
-  n = aggregate(dn[,'ci_rng'], list(ecoregion=dn$ecoreg1), length)[,2],
-  aggregate(ds[,c('exc','ci_rng','rv')], list(ecoregion=ds$ecoreg1), median)[,2:3],
-  n = aggregate(ds[,'ci_rng'], list(ecoregion=ds$ecoreg1), length)[,2]
+  aggregate(dn[,c('ci_rng')], list(ecoregion=dn$ecoreg1), median),
+  num_n = aggregate(dn[,'ci_rng'], list(ecoregion=dn$ecoreg1), length)[,2],
+  s_median_ci_rng = aggregate(ds[,c('ci_rng')], list(ecoregion=ds$ecoreg1), median)[,2],
+  num_s = aggregate(ds[,'ci_rng'], list(ecoregion=ds$ecoreg1), length)[,2]
 )
-(a <- a[rev(order(a$rv)),]) # sort by relative range of variation
+(a <- a[rev(order(a[,2])),]) # sort by N uncertainty
 dn$ecoreg1 <- factor(dn$ecoreg1, levels=a$ecoregion)
 ds$ecoreg1 <- factor(ds$ecoreg1, levels=a$ecoregion)
 grp        <- a$ecoregion
@@ -90,31 +85,30 @@ ds$regionlab <- factor(ds$ecoreg1, labels=paste0(LETTERS[1:k],' = ',grp))
        labels=LETTERS[1:k])
 }
 
+# ### export CSVs for kriging in NCLAS tool, for Leah Charash, 26 May 2021
+# j <- c('lon','lat','ubc_mat','ubc_map','ubc_cmd','elevuse_m','ci_rng')
+# write.csv(dn[,j], file='./krig/n_for_nclas.csv')
+# write.csv(dn[,j], file='./krig/s_for_nclas.csv')
+# rm(j)
 
-### export CSVs for kriging in NCLAS tool, for Leah Charash, 26 May 2021
-j <- c('lon','lat','ubc_mat','ubc_map','ubc_cmd','elevuse_m','ci_rng')
-write.csv(dn[,j], file='./krig/n_for_nclas.csv')
-write.csv(dn[,j], file='./krig/s_for_nclas.csv')
 
-
-# ### --- Fig. xxx --- boxplots of *composition* uncertainties, by region
-# png('./fig/fig_08_bxplt_unc_composition_by_region.png',
-#     wid=6.5, hei=6.0, units='in', bg='transparent', res=700)
-set_par_mercury(4, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
-bxplt(dn, dn, 'rv', T, ylab=nlabr, ylim=c(0,300), CEX=0.7)
+### --- Fig. 05 --- boxplots of *composition* uncertainties, by region
+png('./fig/fig_05_bxplt_unc_composition_by_region.png',
+    wid=6.5, hei=3, units='in', bg='transparent', res=1080)
+set_par_mercury(2, mar=c(3.1,3.1,0.1,0.1), oma=c(0,0,0,0))
+bxplt(dn, dn, 'ci_rng', T, ylab=nlab, ylim=c(0,20), CEX=0.7)
 legend('topleft', paste0(LETTERS[1:k], ' = ', grp),
        col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
-bxplt(ds, ds, 'rv', T, ylab=slabr, ylim=c(0,300), CEX=0.7)
-bxplt(dn, dn, 'ci_rng', T, ylab=nlaba, ylim=c(0,20), CEX=0.7)
-bxplt(ds, ds, 'ci_rng', T, ylab=slaba, ylim=c(0,20), CEX=0.7)
-# dev.off()
+bxplt(ds, ds, 'ci_rng', T, ylab=slab, ylim=c(0,20), CEX=0.7)
+dev.off()
+rm(a, grp, bxplt) # cleanup
 
 
-### --- Fig. xxx --- map of *composition* uncertainties
-`plot_map` <- function(d, zvar='rv', legtitle='Title here', tag='',
+### --- Fig. 06 --- map of *composition* uncertainties
+`plot_map` <- function(d, zvar='ci_rng', legtitle='Title here', tag='',
                        dir=1, brk, transf='identity', ...) {
   plot_usmap(fill='lightgrey') +
-    geom_point(data=d, aes_string(x='lon.1', y='lat.1', color=zvar), size=0.5) +
+    geom_point(data=d, aes_string(x='lon.1', y='lat.1', color=zvar), size=0.35) +
     scale_color_viridis(name=legtitle, na.value='transparent', option='D',
                         direction=dir, trans=transf, breaks=brk, labels=brk) +
     guides(size='none',
@@ -133,30 +127,49 @@ bxplt(ds, ds, 'ci_rng', T, ylab=slaba, ylim=c(0,20), CEX=0.7)
 }
 dn <- dn[!(dn$lat>49.5 & dn$lon > -122),] # rm one invalid location in Canada
 ds <- ds[!(ds$lat>49.5 & ds$lon > -122),] # rm one invalid location in Canada
-dn <- dn[!(dn$rv > 200),] # rm 12 outliers
-ds <- ds[!(ds$rv > 300),] # rm 40 outliers
+dn <- dn[dn$state != 'Missouri',]         # rm another
+ds <- ds[ds$state != 'Missouri',]         # rm another
+dn <- dn[!(dn$ci_rng > 9), ]              # rm 4 outliers, aids visualization
+ds <- ds[!(ds$ci_rng > 12),]              # rm 52 outliers, aids visualization
 dn <- usmap_transform(dn)                 # reproject
 ds <- usmap_transform(ds)                 # reproject
-png(file=paste0('./fig/fig_09_map_unc.png'),
-    wid=6.5, hei=5.0, unit='in', bg='transparent', res=1000)
+# ### --- Fig. 06 --- map of *composition* uncertainties
+# png(file=paste0('./fig/fig_06_map_unc_composition_HORIZONTAL.png'),
+#     wid=6.5, hei=2.5, unit='in', bg='transparent', res=1080)
+# set_par_mercury(1)
+# grid.arrange(
+#   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),
+#   plot_map(ds, 'ci_rng', legtitle=slab, brk=seq(0,12,by=3)),
+#   ncol=2, widths=c(1,1))
+# dev.off()
+
+### --- Fig. 06 --- map of *composition* uncertainties
+png(file=paste0('./fig/fig_06_map_unc_composition.png'),
+    wid=6.5, hei=7.5, unit='in', bg='transparent', res=1080)
 set_par_mercury(1)
 grid.arrange(
-  plot_map(dn, 'rv', legtitle=nlabr, brk=c(0,50,100,200)), #c(5,25,50,100,200,400),
-  plot_map(ds, 'rv', legtitle=slabr,brk=c(0,50,100,200)),
-  plot_map(dn, 'ci_rng', legtitle=nlaba, brk=seq(0,16,by=4)),
-  plot_map(ds, 'ci_rng', legtitle=slaba, brk=seq(0,16,by=4)),
-  ncol=2, widths=c(1,1))
+  plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),
+  plot_map(ds, 'ci_rng', legtitle=slab, brk=seq(0,12,by=3)),
+  nrow=2)
 dev.off()
 
 
 ### --- Fig. 1 --- maps of ecoregions
-dn$regionlab<-factor(dn$regionlab,levels=levels(dn$regionlab)[k:1]) # no overplot
-`plot_map_regions` <- function(d=dn,zvar='regionlab',legtitle='Ecoregions',tag='') {
+# dn$regionlab <- factor(dn$regionlab, levels=levels(dn$regionlab)[k:1])
+`map_regions` <- function(d=dn,zvar='regionlab',legtitle='Ecoregions',tag=''){
   plot_usmap(fill='lightgrey') +
     geom_point(data=d, aes_string(x = 'lon.1', y = 'lat.1', color = zvar), size=0.5) +
     scale_color_manual(
-      values = c('#de4e4e', '#40ada6','#e87878','#984ea3','#ff7f00',
-                 '#ffeb94','#a65628','#377eb8','#479144','#75d7f4'),
+      values = c('#de4e4e',  # red  = n am deserts
+                 '#984ea3',  # purple = great plains
+                 '#40ada6',  # teal = temperate sierras
+                 '#e87878',  # rosepink = southern temperate forests
+                 '#ff7f00',  # orange = eastern temperate forests
+                 '#a65628',  # brown = semi-arid highlands
+                 '#ffeb94',  # yellow = northern forests
+                 '#377eb8',  # darkblue = marine west coast forest
+                 '#75d7f4',  # paleblue = mediterranean calif
+                 '#479144'), # green = northwest montane forest
       name=legtitle, na.value='transparent') +
     guides(size='none',
            color=guide_legend(title.position='top',title.hjust=0.5,
@@ -171,8 +184,8 @@ dn$regionlab<-factor(dn$regionlab,levels=levels(dn$regionlab)[k:1]) # no overplo
     theme(text=element_text(family='Routed Gothic', colour='black'))
 }
 png(file=paste0('./fig/fig_01_map_ecoregions.png'),
-    wid=6.5, hei=5.0, unit='in', bg='transparent', res=1000)
-plot_map_regions()
+    wid=6.5, hei=5.0, unit='in', bg='transparent', res=1080)
+map_regions()
 dev.off()
 
 
