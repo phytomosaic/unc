@@ -123,8 +123,38 @@ plot(us,add=T)
 points(coordinates(xys)*1000,col=1,cex=0.3)
 dev.off()
 
+# cat(paste0('\n -----------------\n\n','Done! At: ',
+#            Sys.time(),'\n\n -----------------\n'))
+
+### reclassify to 1-5 scoring scheme
+rrn <- raster('./krig/n_unc_krig_clip.tif')
+rrs <- raster('./krig/s_unc_krig_clip.tif')
+rcl <- matrix(c(-0.1, 1, 5,
+                   1, 2, 4,
+                   2, 3, 3,
+                   3, 4, 2,
+                   4, 999, 1), ncol=3, byrow=TRUE)
+reclassify(rrn, rcl, filename='./krig/n_unc_reclass.tif',
+           format='GTiff', options=c('COMPRESS=LZW'), overwrite=T) # ! ! ! TIMEWARN ! ! !
+reclassify(rrs, rcl, filename='./krig/s_unc_reclass.tif',
+           format='GTiff', options=c('COMPRESS=LZW'), overwrite=T) # ! ! ! TIMEWARN ! ! !
+
+### Fig. 3 --- thumbnail figures - RECLASSIFIED (1-5)
+png('./krig/fig_03_unc_reclass.png', wid=10, hei=4.75, unit='in',
+    res=1080, bg='transparent')
+ecole::set_par_mercury(2, pty='m')
+plot(raster('./krig/n_unc_reclass.tif'), col=u, main='N unc scores', axes=F)
+plot(us,add=T)
+# points(coordinates(xyn)*1000,col=1,cex=0.3)
+plot(raster('./krig/s_unc_reclass.tif'), col=u, main='S unc scores', axes=F)
+plot(us,add=T)
+# points(coordinates(xys)*1000,col=1,cex=0.3)
+dev.off()
+
+
 cat(paste0('\n -----------------\n\n','Done! At: ',
            Sys.time(),'\n\n -----------------\n'))
+
 
 # ### mask by tree cover... no, handle this at NCLAS instead
 # # back-convert to m from km
