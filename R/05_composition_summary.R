@@ -194,124 +194,51 @@ dev.off()
 
 ### --- NOTRUN --- DIAGNOSTICS ----------------------------------------------
 
-# # correct NA climate values
-# dn$ubc_mat[dn$ubc_mat < -99] <- NA
-# ds$ubc_mat[ds$ubc_mat < -99] <- NA
-#
-# ### diagnostics N ........
-# # png('./fig/fig_00_diagnostics_n.png',
-# #     wid=12, hei=8, uni='in', res=700, bg='transparent')
-# set_par_mercury(6)
-# u <- colvec(dn$cmaq_n_3yroll, alpha=0.9)
-# plot(jitter(dn$sr, factor=2),  dn$scr_obs, col=u, xlim=c(0,40),
-#      xlab='Species richness', ylab='Obsvd airscore')
-# plot(dn$cmaq_n_3yroll, dn$scr_obs, col=u, xlim=c(0,20),
-#      xlab='CMAQ N dep', ylab='Obsvd airscore')
-# plot(dn$ubc_mat, dn$scr_obs, col=u,
-#      xlab='Mean ann temp', ylab='Obsvd airscore')
-# plot(jitter(dn$sr, factor=2),  dn$ci_rng, col=u, xlim=c(0,40),
-#      xlab='Species richness', ylab='Uncertainty')
-# plot(dn$cmaq_n_3yroll, dn$ci_rng, col=u, xlim=c(0,20),
-#      xlab='CMAQ N dep', ylab='Uncertainty')
-# plot(dn$ubc_mat, dn$ci_rng, col=u,
-#      xlab='Mean ann temp', ylab='Uncertainty')
-# # dev.off()
-# ### diagnostics S ........
-# # png('./fig/fig_00_diagnostics_s.png',
-# #     wid=12, hei=8, uni='in', res=700, bg='transparent')
-# set_par_mercury(6)
-# u <- colvec(ds$cmaq_s_3yroll, alpha=0.9)
+# a few corrections
+dn$ubc_mat[dn$ubc_mat < -99] <- NA
+ds$ubc_mat[ds$ubc_mat < -99] <- NA
+dn$ubc_map[dn$ubc_map < 20]  <- 20
+ds$ubc_map[ds$ubc_map < 20]  <- 20
+dn$sr <- dn$spprich_epimac
+ds$sr <- ds$spprich_epimac
+
+u <- colvec(dn$cmaq_n_3yroll, alpha=0.9)
+
+
+### diagnostics N ........
+# png('./fig/fig_00_diagnostics_n.png',
+#     wid=12, hei=8, uni='in', res=700, bg='transparent')
+set_par_mercury(6)
+plot(jitter(dn$sr, factor=2),  dn$scr_obs, col=u, xlim=c(0,40),
+     xlab='Species richness', ylab='Obsvd airscore')
+plot(dn$cmaq_n_3yroll, dn$scr_obs, col=u, xlim=c(0,20),
+     xlab='CMAQ N dep', ylab='Obsvd airscore')
+plot(dn$ubc_mat, dn$scr_obs, col=u,
+     xlab='Mean ann temp', ylab='Obsvd airscore')
+plot(jitter(dn$sr, factor=2),  dn$ci_rng, col=u, xlim=c(0,40),
+     xlab='Species richness', ylab='Uncertainty')
+plot(dn$cmaq_n_3yroll, dn$ci_rng, col=u, xlim=c(0,20),
+     xlab='CMAQ N dep', ylab='Uncertainty')
+plot(dn$ubc_mat, dn$ci_rng, col=u,
+     xlab='Mean ann temp', ylab='Uncertainty')
+# dev.off()
+### diagnostics S ........
+# png('./fig/fig_00_diagnostics_s.png',
+#     wid=12, hei=8, uni='in', res=700, bg='transparent')
+set_par_mercury(6)
+u <- colvec(ds$cmaq_s_3yroll, alpha=0.9)
 # plot(jitter(ds$sr, factor=2),  ds$scr_obs, col=u, xlim=c(0,40),
 #      xlab='Species richness', ylab='Obsvd airscore')
 # plot(ds$cmaq_s_3yroll, ds$scr_obs, col=u, xlim=c(0,20),
 #      xlab='CMAQ S dep', ylab='Obsvd airscore')
 # plot(ds$ubc_mat, ds$scr_obs, col=u,
 #      xlab='Mean ann temp', ylab='Obsvd airscore')
-# plot(jitter(ds$sr, factor=2),  ds$ci_rng, col=u, xlim=c(0,40),
-#      xlab='Species richness', ylab='Uncertainty')
-# plot(ds$cmaq_s_3yroll, ds$ci_rng, col=u, xlim=c(0,20),
-#      xlab='CMAQ S dep', ylab='Uncertainty')
-# plot(ds$ubc_mat, ds$ci_rng, col=u,
-#      xlab='Mean ann temp', ylab='Uncertainty')
-# # dev.off()
-#
-# ### mean and CI are positively related to richness..... WHY???
-# `plot_ci` <- function (z, ...) {
-#   y   <- z$med
-#   lwr <- z$lwr
-#   upr <- z$upr
-#   x   <- 1:NROW(z)
-#   ylm <- c(min(c(y,lwr),na.rm=T) - 0.4, max(c(y,upr),na.rm=T) + 0.1)
-#   plot(x, y, pch=16, cex=0.2, ylim=ylm, ylab='Airscore \u00B1 95% CI',
-#        xaxs='i', yaxs='r', xaxt='n', ...)
-#   segments(x0=x, x1=x, y0=lwr, y1=upr, lwd=0.1, lend='butt')
-# }
-#
-# ### plot bootstrapped airscores vs richness, then CMAQ
-# # png('./fig/fig_01_CIs_richness-CMAQ-n.png',
-# #     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
-# set_par_mercury(1, pty='m')
-# o <- order(dn$sr, dn$cmaq_n_3yroll)
-# plot_ci(dn[o,], xlab='Sites, ordered by richness then CMAQ N dep')
-# csr <- cumsum(table(dn$sr))[1:27]
-# text(c(0,csr)+diff(c(0,csr,length(dn$sr)))*0.5,17,labels=c(4:30,'>30'),
-#      cex=0.5)
-# abline(v=csr, col=2)
-# # dev.off()
-# # png('./fig/fig_01_CIs_richness-CMAQ-s.png',
-# #     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
-# set_par_mercury(1, pty='m')
-# o <- order(ds$sr, ds$cmaq_s_3yroll)
-# plot_ci(ds[o,], xlab='Sites, ordered by richness then CMAQ S dep')
-# csr <- cumsum(table(ds$sr))[1:27]
-# text(c(0,csr)+diff(c(0,csr,length(ds$sr)))*0.5,17,labels=c(4:30,'>30'),
-#      cex=0.5)
-# abline(v=csr, col=2)
-# # dev.off()
-#
-# ### plot bootstapped airscores vs observed CMAQ
-# # png('./fig/fig_02_CIs_CMAQ-n.png',
-# #     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
-# set_par_mercury(1, pty='m')
-# o <- order(dn$cmaq_n_3yroll, dn$sr)
-# plot_ci(dn[o,], xlab='Sites, ordered by CMAQ N dep')
-# csr <- cumsum(table(round(dn$cmaq_n_3yroll[o])))[1:15]
-# text(c(0,csr)+diff(c(0,csr,length(dn$sr)))*0.5, 17, labels=c(1:15,'>15'),
-#      cex=0.5)
-# abline(v=csr, col=2)
-# # dev.off()
-# # png('./fig/fig_02_CIs_CMAQ-s.png',
-# #     wid=14.0, hei=5, uni='in', res=700, bg='transparent')
-# set_par_mercury(1, pty='m')
-# o <- order(ds$cmaq_s_3yroll, ds$sr)
-# plot_ci(ds[o,], xlab='Sites, ordered by CMAQ S dep')
-# csr <- cumsum(table(round(ds$cmaq_s_3yroll[o])))[1:15]
-# text(c(0,csr)+diff(c(0,csr,length(ds$sr)))*0.5, 17, labels=c(1:15,'>15'),
-#      cex=0.5)
-# abline(v=csr, col=2)
-# # dev.off()
-#
-# ### zoom-in
-# # png('./fig/fig_01_CIs_zoom_SR11.png',
-# #     wid=4.5, hei=4.5, uni='in', res=700, bg='transparent')
-# set_par_mercury(1, pty='s')
-# o   <- order(dn$cmaq_n_3yroll)
-# i   <- which(dn$sr==11)
-# set.seed(121)
-# i   <- sort(sample(i,size=50))
-# tci <- dn[o,]
-# tci <- tci[i,]
-# `plot_ci` <- function (z, ...) {
-#   y   <- z$med
-#   lwr <- z$lwr
-#   upr <- z$upr
-#   x   <- 1:NROW(z)
-#   ylm <- c(min(c(y,lwr),na.rm=T) - 0.4, max(c(y,upr),na.rm=T) + 0.1)
-#   plot(x, y, pch=16, cex=0.5, ylim=ylm, ylab='Airscore \u00B1 95% CI',
-#        xaxs='r', yaxs='r', xaxt='n', ...)
-#   segments(x0=x, x1=x, y0=lwr, y1=upr, lwd=0.5, lend='butt')
-# }
-# plot_ci(tci, xlab='Sites, ordered by CMAQ N deposition')
-# # dev.off()
+plot(jitter(ds$sr, factor=2),  ds$ci_rng, col=u, xlim=c(0,40),
+     xlab='Species richness', ylab='Uncertainty')
+plot(ds$cmaq_s_3yroll, ds$ci_rng, col=u, xlim=c(0,20),
+     xlab='CMAQ S dep', ylab='Uncertainty')
+plot(ds$ubc_mat, ds$ci_rng, col=u,
+     xlab='Mean ann temp', ylab='Uncertainty')
+# dev.off()
 
 ####    END    ####
