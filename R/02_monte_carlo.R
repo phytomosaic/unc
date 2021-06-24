@@ -139,50 +139,66 @@ dev.off()
 
 
 
-# ### OPTIONAL: homemade bootstrap of SITES (rq already can do this....)
-# `boot_the_sites` <- function(fmla, sek = seq(0.1, 30, by=0.01), nboot=99,
-#                              do_plot = TRUE, ...) {
-#    cat('now doing', format(fmla), '...\n')
-#    # initialize the main plot
-#    xvar <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
-#    yvar <- gsub('\\ ~.*', '', format(fmla))
-#    plot(d[,xvar], d[,yvar], pch=16, cex=0.7, col='#00000050',
-#         ylab=yvar, xlab=xvar)
-#    # sample sites with replacement
-#    `fit_mod` <- function(...){
-#       db  <- d[sample(1:NROW(d), replace=T),]      # resampling step
-#       mod <- quantreg::rq(fmla, tau=0.90, data=db) # focal model
-#       crit   <- 0.20                               # critical decline = 20%
-#       newdat <- data.frame(sek)
-#       colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
-#       pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
-#       `nadir` <- function(x) { # trim to parabola nadir (forbid increasing curve)
-#          is_decr <- sapply(2:length(x), function(i) (x[i] < x[i-1]) * 1)
-#          if(all(is_decr == 1)) length(x) else which.min(is_decr)
-#       }
-#       i   <- nadir(pr[,'fit'])                     # index the nadir
-#       sek <- sek[1:i]                              # trimmed sequence
-#       pr  <- pr[1:i,]                              # trimmed predicted values
-#       p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))   # percent decline from max
-#       CL  <- sek[which.min(abs(p - crit))]         # CL is N dep that's closest
-#       cx  <- coefficients(mod)
-#       `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
-#       if(do_plot) {
-#          lines(sek, f(cx[1], cx[2], cx[3]), col='#00FFFF10', lwd=2)
-#          abline(v=CL, col='#FF000010')
-#          points(CL, pr[,'fit'][which.min(abs(sek - CL))], pch=21,
-#                 bg='#FFD70020', cex=1.5)
-#       }
-#       # return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
-#    }
-#    replicate(n=nboot, expr=fit_mod())
-# }
-# ### do the bootstrap resampling
-# png('./fig/fig_99_bootstrap_fitlines.png',
-#     wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
-# set_par_mercury(8, mfrow=c(2,4))
-# bc <- lapply(fmla_lst, function(i) { boot_the_sites(i) }) # ! TIMEWARN ! ! !
-# dev.off()
+### --- Fig. 1 --- one Monte Carlo run, for explanatory purposes
+`monte_carlo_plot` <- function(fmla,n=999,do_plot=T,...) {
+   cat('now doing', format(fmla), '...\n')
+   xvar   <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
+   sek    <- seq(0.1,  max(d[,xvar], na.rm=T), by=0.01)
+   mod    <- quantreg::rq(fmla,tau=0.90,data=d) # focal model
+   crit   <- 0.20                               # critical decline = 20%
+   newdat <- data.frame(sek)                    # sequence
+   colnames(newdat) <- if(grepl('poly\\(S', paste0(fmla)[3])) 'S' else 'N'
+   pr  <- predict(mod,newdat,type='none',interval='conf') # *predicted* vals
+   `nadir` <- function(x) { # trim to parabola nadir (forbid increasing curve)
+      is_decr <- sapply(2:length(x), function(i) (x[i] < x[i-1]) * 1)
+      if(all(is_decr == 1)) length(x) else which.min(is_decr)
+   }
+   i   <- nadir(pr[,'fit'])                     # index the nadir
+   sek <- sek[1:i]                              # trimmed sequence
+   pr  <- pr[1:i,]                              # trimmed predicted values
+   p   <-  (1 - pr[,'fit'] / max(pr[,'fit']))   # percent decline from max
+   CL  <- sek[which.min(abs(p - crit))]         # CL is N dep that's closest
+   cx  <- coefficients(mod)                     # model coefficients
+   se  <- summary(mod)$coefficients[,'Std. Error'] * 1.0 # plug-in parameter SE
+   set.seed(1926)                               # sample from parameter priors
+   b   <- data.frame(b0=rnorm(n, cx[1], se[1]), # intercept
+                     b1=rnorm(n, cx[2], se[2]), # slope
+                     b2=rnorm(n, cx[3], se[3])) # curvature
+   `f` <- function(b0, b1, b2, N=sek) { b0 + b1*N + b2*N^2 } # polynomial fn
+   # setup plot, add original CL
+   xvar <- substr(gsub('.*poly\\(', '', format(fmla)), 1,1)
+   yvar <- gsub('\\ ~.*', '', format(fmla))
+   plot(d[,xvar], d[,yvar], pch=NA, xlim=c(0,20), ylab='Species richness',
+        xlab=expression(Nitrogen ~ (kg ~ N ~ ha^{-1} ~ y^{-1})))
+   # iterate for random parameter values
+   CLs <- mapply(function(b0, b1, b2) {        # fit polynomial function
+      yhat <- f(b0, b1, b2, N=sek)              # fitted values for richness
+      p    <-  (1 - yhat / max(yhat))           # percent decline from max
+      lines(sek, yhat, col='#00000010')         ###  <<----- simulated CLs
+      return(sek[which.min(abs(p - crit))])     # CL is N dep that's closest
+   }, b[,1], b[,2], b[,3])                     # random parameters
+   ci   <- round(quantile(CLs, probs=c(0.025,0.975)),2)
+   pval <- (sum(CLs > CL) + 1) / (length(CLs) + 1)
+   # plotting the lines
+   lines(sek, f(cx[1], cx[2], cx[3]), col='cyan', lwd=2) # original CL
+   abline(v=CLs, col='#00000010') # simulated CLs
+   abline(v=CL,  col='cyan', lwd=2)      # original CL
+   # output
+   return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
+}
+png('./fig/fig_01_monte_carlo_explanatory.png',
+    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+set_par_mercury(2, CEX=0.8)
+# monte carlo fitlines
+mc <- monte_carlo_plot(spprich_n_sens ~ poly(N, 2, raw = T), n=999) # ! TIMEWARN ! ! !
+add_label('A')
+# monte carlo histogram
+hist(mc$CLs, breaks=seq(0,10,by=0.03), main='', prob=F, ylab='Frequency',
+     xlab=expression(Critical ~ Loads ~ (kg ~ N ~ ha^{-1} ~ y^{-1})),
+     xlim=c(2,4.2), col='grey', yaxs='i') ; box(bty='L')
+add_label('B')
+dev.off()
+
 
 
 ####    END    ####
