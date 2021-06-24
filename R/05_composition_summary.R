@@ -48,60 +48,77 @@ slab <- expression(S~uncertainty~(kg~ha^-1~y^-1))
 mean(dn[,c('ci_rng')]) # 3.22 kg N ha y
 mean(ds[,c('ci_rng')]) # 3.34 kg S ha y
 
+### --- Fig. 03 --- boxplots of uncertainty vs richness
+png('./fig/fig_05_composition_boxplots.png',
+    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+dn$spprich_epimac[dn$spprich_epimac < 4] <- NA
+set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
+plot(x=factor(dn$spprich_epimac), y=dn$ci_rng,
+     xlim=c(0,39), ylim=c(0,12), outcex=0.3,
+     boxwex=0.3, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
+     whisklty=1, staplewex=0, cex.axis=0.6,
+     xlab='Observed richness', ylab=nlab)
+plot(x=factor(ds$spprich_epimac), y=ds$ci_rng,
+     xlim=c(0,39), ylim=c(0,12), outcex=0.3,
+     boxwex=0.3, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
+     whisklty=1, staplewex=0, cex.axis=0.6,
+     xlab='Observed richness', ylab=slab)
+dev.off()
+
 # ### calc site *exceedances*: bootstrapped median minus the fixed CL
 # dn$exc <- dn$med - 1.5   # N airscores CL = 1.5
 # ds$exc <- ds$med - 2.7   # S airscores CL = 2.7
 
-### split 'eastern temperate forest' ecoregion to north vs south
-a <- c('mississippi alluvial and southeast usa coastal plains',
-       'southeastern usa plains')
-b <- c('southwestern appalachians','blue ridge','ozark highlands','ridge and valley')
-dn$ecoreg1[dn$ecoreg2 %in% a | dn$ecoreg3 %in% b] <- 'southern temperate forests'
-ds$ecoreg1[ds$ecoreg2 %in% a | ds$ecoreg3 %in% b] <- 'southern temperate forests'
-rm(a,b)
-
-### setup boxplot by region
-a <- data.frame( # summary table
-  aggregate(dn[,c('ci_rng')], list(ecoregion=dn$ecoreg1), median),
-  num_n = aggregate(dn[,'ci_rng'], list(ecoregion=dn$ecoreg1), length)[,2],
-  s_median_ci_rng = aggregate(ds[,c('ci_rng')], list(ecoregion=ds$ecoreg1), median)[,2],
-  num_s = aggregate(ds[,'ci_rng'], list(ecoregion=ds$ecoreg1), length)[,2]
-)
-(a <- a[rev(order(a[,2])),]) # sort by N uncertainty
-dn$ecoreg1 <- factor(dn$ecoreg1, levels=a$ecoregion)
-ds$ecoreg1 <- factor(ds$ecoreg1, levels=a$ecoregion)
-grp        <- a$ecoregion
-k          <- length(grp)
-dn$regionlab <- factor(dn$ecoreg1, labels=paste0(LETTERS[1:k],' = ',grp))
-ds$regionlab <- factor(ds$ecoreg1, labels=paste0(LETTERS[1:k],' = ',grp))
-`bxplt` <- function(x, y, yvar='20', CEX=0.7, ...) {
-  plot(as.factor(x$ecoreg1), y[,yvar], outcex=0.4, boxwex=0.3, boxfill='#c1c1c1',
-       outpch=16, outcol='#00000010', whisklty=1, staplewex=0,
-       xlab='Ecoregion', xaxt='n', xaxs='i', pty='s', box.lty=1,
-       mgp=c(CEX+1.4,0.4,0), tcl=-0.2, las=1, bty='L', cex=CEX,
-       cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
-  incr <- (par('usr')[4] - par('usr')[3]) * 0.04
-  text(1:k+0.1, y=par('usr')[3]-incr, srt=0, adj=1, xpd=T, cex=CEX*0.9,
-       labels=LETTERS[1:k])
-}
-
-# ### export CSVs for kriging in NCLAS tool, for Leah Charash, 26 May 2021
-# j <- c('lon','lat','ubc_mat','ubc_map','ubc_cmd','elevuse_m','ci_rng')
-# write.csv(dn[,j], file='./krig/n_for_nclas.csv')
-# write.csv(dn[,j], file='./krig/s_for_nclas.csv')
-# rm(j)
-
-
-### --- Fig. 05 --- boxplots of *composition* uncertainties, by region
-png('./fig/fig_05_bxplt_unc_composition_by_region.png',
-    wid=6.5, hei=3, units='in', bg='transparent', res=1080)
-set_par_mercury(2, mar=c(3.1,3.1,0.1,0.1), oma=c(0,0,0,0))
-bxplt(dn, dn, 'ci_rng', T, ylab=nlab, ylim=c(0,20), CEX=0.7)
-legend('topleft', paste0(LETTERS[1:k], ' = ', grp),
-       col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
-bxplt(ds, ds, 'ci_rng', T, ylab=slab, ylim=c(0,20), CEX=0.7)
-dev.off()
-rm(a, grp, bxplt) # cleanup
+# ### split 'eastern temperate forest' ecoregion to north vs south
+# a <- c('mississippi alluvial and southeast usa coastal plains',
+#        'southeastern usa plains')
+# b <- c('southwestern appalachians','blue ridge','ozark highlands','ridge and valley')
+# dn$ecoreg1[dn$ecoreg2 %in% a | dn$ecoreg3 %in% b] <- 'southern temperate forests'
+# ds$ecoreg1[ds$ecoreg2 %in% a | ds$ecoreg3 %in% b] <- 'southern temperate forests'
+# rm(a,b)
+#
+# ### setup boxplot by region
+# a <- data.frame( # summary table
+#   aggregate(dn[,c('ci_rng')], list(ecoregion=dn$ecoreg1), median),
+#   num_n = aggregate(dn[,'ci_rng'], list(ecoregion=dn$ecoreg1), length)[,2],
+#   s_median_ci_rng = aggregate(ds[,c('ci_rng')], list(ecoregion=ds$ecoreg1), median)[,2],
+#   num_s = aggregate(ds[,'ci_rng'], list(ecoregion=ds$ecoreg1), length)[,2]
+# )
+# (a <- a[rev(order(a[,2])),]) # sort by N uncertainty
+# dn$ecoreg1 <- factor(dn$ecoreg1, levels=a$ecoregion)
+# ds$ecoreg1 <- factor(ds$ecoreg1, levels=a$ecoregion)
+# grp        <- a$ecoregion
+# k          <- length(grp)
+# dn$regionlab <- factor(dn$ecoreg1, labels=paste0(LETTERS[1:k],' = ',grp))
+# ds$regionlab <- factor(ds$ecoreg1, labels=paste0(LETTERS[1:k],' = ',grp))
+# `bxplt` <- function(x, y, yvar='20', CEX=0.7, ...) {
+#   plot(as.factor(x$ecoreg1), y[,yvar], outcex=0.4, boxwex=0.3, boxfill='#c1c1c1',
+#        outpch=16, outcol='#00000010', whisklty=1, staplewex=0,
+#        xlab='Ecoregion', xaxt='n', xaxs='i', pty='s', box.lty=1,
+#        mgp=c(CEX+1.4,0.4,0), tcl=-0.2, las=1, bty='L', cex=CEX,
+#        cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
+#   incr <- (par('usr')[4] - par('usr')[3]) * 0.04
+#   text(1:k+0.1, y=par('usr')[3]-incr, srt=0, adj=1, xpd=T, cex=CEX*0.9,
+#        labels=LETTERS[1:k])
+# }
+#
+# # ### export CSVs for kriging in NCLAS tool, for Leah Charash, 26 May 2021
+# # j <- c('lon','lat','ubc_mat','ubc_map','ubc_cmd','elevuse_m','ci_rng')
+# # write.csv(dn[,j], file='./krig/n_for_nclas.csv')
+# # write.csv(dn[,j], file='./krig/s_for_nclas.csv')
+# # rm(j)
+#
+#
+# ### --- Fig. 05 --- boxplots of *composition* uncertainties, by region
+# png('./fig/fig_05_bxplt_unc_composition_by_region.png',
+#     wid=6.5, hei=3, units='in', bg='transparent', res=1080)
+# set_par_mercury(2, mar=c(3.1,3.1,0.1,0.1), oma=c(0,0,0,0))
+# bxplt(dn, dn, 'ci_rng', T, ylab=nlab, ylim=c(0,20), CEX=0.7)
+# legend('topleft', paste0(LETTERS[1:k], ' = ', grp),
+#        col='transparent', border=NA, bty='n', cex=0.5, ncol=2)
+# bxplt(ds, ds, 'ci_rng', T, ylab=slab, ylim=c(0,20), CEX=0.7)
+# dev.off()
+# rm(a, grp, bxplt) # cleanup
 
 
 ### --- Fig. 06 --- map of *composition* uncertainties

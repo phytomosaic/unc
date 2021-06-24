@@ -90,6 +90,22 @@ mean(dn$ci_rng_n20)    # 2.42 kg N ha y (at most generous 20 species) <-- USE TH
 mean(ds$ci_rng_s20)    # 2.47 kg S ha y (at most generous 20 species) <-- USE THIS!
 
 
+
+### --- Fig. 03 --- boxplots of uncertainty vs richness
+png('./fig/fig_03_richness_boxplots.png',
+    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
+boxplot(x = as.list(as.data.frame(ci_rng_n)), outcex=0.3, ylim=c(0,22),
+        boxwex=0.4, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
+        whisklty=1, staplewex=0, cex.axis=0.7,
+        xlab='Simulated richness', ylab=nlab)
+boxplot(x = as.list(as.data.frame(ci_rng_s)), outcex=0.3, ylim=c(0,22),
+        boxwex=0.4, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
+        whisklty=1, staplewex=0, cex.axis=0.7,
+        xlab='Simulated richness', ylab=slab)
+dev.off()
+
+
 ### --- Fig. S1 --- Measurement error: at what richness does SEM cross MQO?
 png('./fig/fig_s1_MQO_richness.png',
     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
@@ -107,57 +123,56 @@ abline(h=1.5, col=2, lwd=2)
 dev.off()
 rm(mqo, ci_rng_n, ci_rng_s, se_n, se_s) # cleanup
 
-### setup for boxplot by ecoregion
-a <- data.frame(aggregate(dn$ci_rng_n20, list(ecoregion=dn$ecoreg1), median),
-                n = c(table(dn$ecoreg1)))
-(a <- a[rev(order(a$x)),])
-dn$ecoreg1 <- factor(dn$ecoreg1, levels=a$ecoregion)
-grp  <- a$ecoregion
-k    <- length(grp)
-`bxplt` <- function(x, y, do_xaxt=TRUE, CEX=0.7, ...) {
-  plot(as.factor(x$ecoreg1), y, outcex=0.4, # ylim=c(0,500),
-       boxwex=0.3, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
-       whisklty=1, staplewex=0,
-       xlab='Ecoregion', xaxt='n', xaxs='i', pty='s', box.lty=1,
-       mgp=c(CEX+1.4,0.4,0), tcl=-0.2, las=1, bty='L', cex=CEX,
-       cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
-  if(isTRUE(do_xaxt)) {
-    incr <- (par('usr')[4] - par('usr')[3]) * 0.04
-    text(1:k+0.1, y=par('usr')[3]-incr, srt=0, adj=1, xpd=T, cex=CEX*0.9,
-         labels=LETTERS[1:k])
-  }
-}
-
-### boxplot uncertainties per region
-png('./fig/fig_03_bxplt_unc_richness_by_region.png',
-    wid=6.5, hei=4.75, units='in', bg='transparent', res=1080)
-set_par_mercury(6, mar=c(3.1,3.1,0.5,0.5), oma=c(0,0,0,0))
-# nitrogen
-bxplt(dn, dn$ci_rng_n02, T, ylab='', ylim=c(0,15))
-title(ylab=nlab, line=0.75, cex.lab=0.9)
-add_label('    A    richness = 2', cex=0.8)
-bxplt(dn, dn$ci_rng_n10, T, ylab='', ylim=c(0,15))
-title(ylab=nlab, line=0.75, cex.lab=0.9)
-add_label('    B    richness = 10', cex=0.8)
-bxplt(dn, dn$ci_rng_n20, T, ylab='', ylim=c(0,15))
-title(ylab=nlab, line=0.75, cex.lab=0.9)
-add_label('    C    richness = 20', cex=0.8)
-legend('topright', paste0(LETTERS[1:k], ' = ', grp),
-       col='transparent', border=NA, bty='n', cex=0.46, ncol=2)
-# sulfur
-bxplt(ds, ds$ci_rng_s02, T, ylab='', ylim=c(0,15))
-title(ylab=slab, line=0.75, cex.lab=0.9)
-add_label('    D    richness = 2', cex=0.8)
-bxplt(ds, ds$ci_rng_s10, T, ylab='', ylim=c(0,15))
-title(ylab=slab, line=0.75, cex.lab=0.9)
-add_label('    E    richness = 10', cex=0.8)
-bxplt(ds, ds$ci_rng_s20, T, ylab='', ylim=c(0,15))
-title(ylab=slab, line=0.75, cex.lab=0.9)
-add_label('    F    richness = 20', cex=0.8)
-legend('topright', paste0(LETTERS[1:k], ' = ', grp),
-       col='transparent', border=NA, bty='n', cex=0.46, ncol=2)
-dev.off()
-rm(a, k, grp, bxplt) # cleanup
+# ### setup for boxplot by ecoregion
+# a <- data.frame(aggregate(dn$ci_rng_n20, list(ecoregion=dn$ecoreg1), median),
+#                 n = c(table(dn$ecoreg1)))
+# (a <- a[rev(order(a$x)),])
+# dn$ecoreg1 <- factor(dn$ecoreg1, levels=a$ecoregion)
+# grp  <- a$ecoregion
+# k    <- length(grp)
+# `bxplt` <- function(x, y, do_xaxt=TRUE, CEX=0.7, ...) {
+#   plot(as.factor(x$ecoreg1), y, outcex=0.4, # ylim=c(0,500),
+#        boxwex=0.3, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
+#        whisklty=1, staplewex=0,
+#        xlab='Ecoregion', xaxt='n', xaxs='i', pty='s', box.lty=1,
+#        mgp=c(CEX+1.4,0.4,0), tcl=-0.2, las=1, bty='L', cex=CEX,
+#        cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
+#   if(isTRUE(do_xaxt)) {
+#     incr <- (par('usr')[4] - par('usr')[3]) * 0.04
+#     text(1:k+0.1, y=par('usr')[3]-incr, srt=0, adj=1, xpd=T, cex=CEX*0.9,
+#          labels=LETTERS[1:k])
+#   }
+# }
+# ### boxplot uncertainties per region
+# png('./fig/fig_03_bxplt_unc_richness_by_region.png',
+#     wid=6.5, hei=4.75, units='in', bg='transparent', res=1080)
+# set_par_mercury(6, mar=c(3.1,3.1,0.5,0.5), oma=c(0,0,0,0))
+# # nitrogen
+# bxplt(dn, dn$ci_rng_n02, T, ylab='', ylim=c(0,15))
+# title(ylab=nlab, line=0.75, cex.lab=0.9)
+# add_label('    A    richness = 2', cex=0.8)
+# bxplt(dn, dn$ci_rng_n10, T, ylab='', ylim=c(0,15))
+# title(ylab=nlab, line=0.75, cex.lab=0.9)
+# add_label('    B    richness = 10', cex=0.8)
+# bxplt(dn, dn$ci_rng_n20, T, ylab='', ylim=c(0,15))
+# title(ylab=nlab, line=0.75, cex.lab=0.9)
+# add_label('    C    richness = 20', cex=0.8)
+# legend('topright', paste0(LETTERS[1:k], ' = ', grp),
+#        col='transparent', border=NA, bty='n', cex=0.46, ncol=2)
+# # sulfur
+# bxplt(ds, ds$ci_rng_s02, T, ylab='', ylim=c(0,15))
+# title(ylab=slab, line=0.75, cex.lab=0.9)
+# add_label('    D    richness = 2', cex=0.8)
+# bxplt(ds, ds$ci_rng_s10, T, ylab='', ylim=c(0,15))
+# title(ylab=slab, line=0.75, cex.lab=0.9)
+# add_label('    E    richness = 10', cex=0.8)
+# bxplt(ds, ds$ci_rng_s20, T, ylab='', ylim=c(0,15))
+# title(ylab=slab, line=0.75, cex.lab=0.9)
+# add_label('    F    richness = 20', cex=0.8)
+# legend('topright', paste0(LETTERS[1:k], ' = ', grp),
+#        col='transparent', border=NA, bty='n', cex=0.46, ncol=2)
+# dev.off()
+# rm(a, k, grp, bxplt) # cleanup
 
 
 
