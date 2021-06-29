@@ -206,12 +206,11 @@ ds <- ds[!(ds$lat>49.5 & ds$lon > -122),] # rm one invalid location in Canada
 ds <- ds[ds$state != 'Missouri',]         # rm another
 ds <- ds[rev(order(ds$sr_margin)),]       # order by species richness margin
 ds <- usmap_transform(ds)                 # reproject
-# png(file=paste0('./fig/fig_09_map_unc_richness.png'),
+# png(file=paste0('./fig/fig_99_map_unc_richness.png'),
 #     wid=6.5, hei=5.0, unit='in', bg='transparent', res=1000)
 set_par_mercury(1)
 grid.arrange(
-  # plot_map(dn, 'ci_rng_n02', legtitle=nlab, brk=c(0:5)), #brk=c(0,50,100,200)), #c(5,25,50,100,200,400),
-  plot_map(dn, 'ci_rng_n20', legtitle=nlab, brk=c(0:5)), #brk=c(0,50,100,200)), #c(5,25,50,100,200,400),
+  plot_map(dn, 'ci_rng_n20', legtitle=nlab, brk=c(0:5)),
   plot_map(ds, 'ci_rng_s20', legtitle=slab, brk=c(0:10)),
   ncol=2, widths=c(1,1))
 # dev.off()
@@ -225,8 +224,7 @@ grid.arrange(
     scale_colour_gradient2(name=legtitle, na.value='transparent',
                            trans=transf, breaks=brk, labels=brk, midpoint=0,
                            low='#FF0000', mid='#FFFFFF', high='#0000FF') +
-    # # MUTED (poor look):
-    # low='#832424', mid='#FFFFFF00', high='#3A3A98'
+    # # MUTED (poor look): low='#832424', mid='#FFFFFF00', high='#3A3A98'
     guides(size='none',
            color=guide_colourbar(ticks=F, title.position='top',
                                  title.hjust=0.5, barheight=0.2, barwidth=5))+
@@ -240,21 +238,14 @@ grid.arrange(
           plot.tag.position = c(0.05, 1)) + labs(tag = tag) +
     theme(text=element_text(family='Routed Gothic', colour='black'))
 }
-# dn <- dn[!(dn$lat>49.5 & dn$lon > -122),] # rm one invalid location in Canada
-# dn <- dn[dn$state != 'Missouri',]        # rm another
 dn <- dn[!(dn$sr_margin > 40),]          # rm 12 outliers
-# dn <- dn[rev(order(dn$sr_margin)),]      # order by species richness margin
-# dn <- usmap_transform(dn)               # reproject
 png(file=paste0('./fig/fig_04_map_richnessmargin.png'),
-    wid=6.5, hei=3.0, unit='in', bg='transparent', res=1080)
-grid.arrange(
-  plot_map_diverg(dn, 'sr_margin',
-                  legtitle='Richness margin',
-                  brk=c(-10,-5,0,5,10,40)),
-  plot_map_diverg(ds, 'sr_margin',
-                  legtitle='Richness margin',
-                  brk=c(-10,-5,0,5,10,40)),
-  ncol=2, widths=c(1,1))
+    wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+grid.arrange(plot_map_diverg(dn, 'sr_margin', legtitle='Richness margin',
+                             brk=c(-10,-5,0,5,10,40)),
+             plot_map_diverg(ds, 'sr_margin',legtitle='Richness margin',
+                             brk=c(-10,-5,0,5,10,40)),
+             nrow=2)
 dev.off()
 
 
