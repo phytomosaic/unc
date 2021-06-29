@@ -162,7 +162,8 @@ ds <- usmap_transform(ds)                 # reproject
 
 ### --- Fig. 06 --- map of *composition* uncertainties
 png(file=paste0('./fig/fig_06_map_unc_composition.png'),
-    wid=6.5, hei=7.5, unit='in', bg='transparent', res=1080)
+    wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+# wid=6.5, hei=7.5, unit='in', bg='transparent', res=1080)
 set_par_mercury(1)
 grid.arrange(
   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),
@@ -171,91 +172,38 @@ grid.arrange(
 dev.off()
 
 
-### --- Fig. 1 --- maps of ecoregions
-# dn$regionlab <- factor(dn$regionlab, levels=levels(dn$regionlab)[k:1])
-`map_regions` <- function(d=dn,zvar='regionlab',legtitle='Ecoregions',tag=''){
-  plot_usmap(fill='lightgrey') +
-    geom_point(data=d, aes_string(x = 'lon.1', y = 'lat.1', color = zvar), size=0.5) +
-    scale_color_manual(
-      values = c('#de4e4e',  # red  = n am deserts
-                 '#984ea3',  # purple = great plains
-                 '#40ada6',  # teal = temperate sierras
-                 '#e87878',  # rosepink = southern temperate forests
-                 '#ff7f00',  # orange = eastern temperate forests
-                 '#a65628',  # brown = semi-arid highlands
-                 '#ffeb94',  # yellow = northern forests
-                 '#377eb8',  # darkblue = marine west coast forest
-                 '#75d7f4',  # paleblue = mediterranean calif
-                 '#479144'), # green = northwest montane forest
-      name=legtitle, na.value='transparent') +
-    guides(size='none',
-           color=guide_legend(title.position='top',title.hjust=0.5,
-                              ncol=2, keyheight=0.4)) +
-    theme(legend.title = element_text(size=6),
-          legend.text = element_text(size=4),
-          legend.direction='horizontal', legend.position = c(0.43, 0.03),
-          plot.background = element_blank(), panel.background = element_blank(),
-          legend.background = element_blank(), legend.key  = element_blank(),
-          title = element_text(size=14), plot.margin = margin(0,0,0,0),
-          plot.tag.position = c(0.05,1)) + labs(tag = tag) +
-    theme(text=element_text(family='Routed Gothic', colour='black'))
-}
-png(file=paste0('./fig/fig_01_map_ecoregions.png'),
-    wid=6.5, hei=5.0, unit='in', bg='transparent', res=1080)
-map_regions()
-dev.off()
-
-
-
-
-
-### --- NOTRUN --- DIAGNOSTICS ----------------------------------------------
-
-# a few corrections
-dn$ubc_mat[dn$ubc_mat < -99] <- NA
-ds$ubc_mat[ds$ubc_mat < -99] <- NA
-dn$ubc_map[dn$ubc_map < 20]  <- 20
-ds$ubc_map[ds$ubc_map < 20]  <- 20
-dn$sr <- dn$spprich_epimac
-ds$sr <- ds$spprich_epimac
-
-u <- colvec(dn$cmaq_n_3yroll, alpha=0.9)
-
-
-### diagnostics N ........
-# png('./fig/fig_00_diagnostics_n.png',
-#     wid=12, hei=8, uni='in', res=700, bg='transparent')
-set_par_mercury(6)
-plot(jitter(dn$sr, factor=2),  dn$scr_obs, col=u, xlim=c(0,40),
-     xlab='Species richness', ylab='Obsvd airscore')
-plot(dn$cmaq_n_3yroll, dn$scr_obs, col=u, xlim=c(0,20),
-     xlab='CMAQ N dep', ylab='Obsvd airscore')
-plot(dn$ubc_mat, dn$scr_obs, col=u,
-     xlab='Mean ann temp', ylab='Obsvd airscore')
-plot(jitter(dn$sr, factor=2),  dn$ci_rng, col=u, xlim=c(0,40),
-     xlab='Species richness', ylab='Uncertainty')
-plot(dn$cmaq_n_3yroll, dn$ci_rng, col=u, xlim=c(0,20),
-     xlab='CMAQ N dep', ylab='Uncertainty')
-plot(dn$ubc_mat, dn$ci_rng, col=u,
-     xlab='Mean ann temp', ylab='Uncertainty')
-# dev.off()
-### diagnostics S ........
-# png('./fig/fig_00_diagnostics_s.png',
-#     wid=12, hei=8, uni='in', res=700, bg='transparent')
-set_par_mercury(6)
-u <- colvec(ds$cmaq_s_3yroll, alpha=0.9)
-# plot(jitter(ds$sr, factor=2),  ds$scr_obs, col=u, xlim=c(0,40),
-#      xlab='Species richness', ylab='Obsvd airscore')
-# plot(ds$cmaq_s_3yroll, ds$scr_obs, col=u, xlim=c(0,20),
-#      xlab='CMAQ S dep', ylab='Obsvd airscore')
-# plot(ds$ubc_mat, ds$scr_obs, col=u,
-#      xlab='Mean ann temp', ylab='Obsvd airscore')
-plot(jitter(ds$sr, factor=2),  ds$ci_rng, col=u, xlim=c(0,40),
-     xlab='Species richness', ylab='Uncertainty')
-plot(ds$cmaq_s_3yroll, ds$ci_rng, col=u, xlim=c(0,20),
-     xlab='CMAQ S dep', ylab='Uncertainty')
-plot(ds$ubc_mat, ds$ci_rng, col=u,
-     xlab='Mean ann temp', ylab='Uncertainty')
+# ### --- Fig. 1 --- maps of ecoregions
+# # dn$regionlab <- factor(dn$regionlab, levels=levels(dn$regionlab)[k:1])
+# `map_regions` <- function(d=dn,zvar='regionlab',legtitle='Ecoregions',tag=''){
+#   plot_usmap(fill='lightgrey') +
+#     geom_point(data=d, aes_string(x = 'lon.1', y = 'lat.1', color = zvar), size=0.5) +
+#     scale_color_manual(
+#       values = c('#de4e4e',  # red  = n am deserts
+#                  '#984ea3',  # purple = great plains
+#                  '#40ada6',  # teal = temperate sierras
+#                  '#e87878',  # rosepink = southern temperate forests
+#                  '#ff7f00',  # orange = eastern temperate forests
+#                  '#a65628',  # brown = semi-arid highlands
+#                  '#ffeb94',  # yellow = northern forests
+#                  '#377eb8',  # darkblue = marine west coast forest
+#                  '#75d7f4',  # paleblue = mediterranean calif
+#                  '#479144'), # green = northwest montane forest
+#       name=legtitle, na.value='transparent') +
+#     guides(size='none',
+#            color=guide_legend(title.position='top',title.hjust=0.5,
+#                               ncol=2, keyheight=0.4)) +
+#     theme(legend.title = element_text(size=6),
+#           legend.text = element_text(size=4),
+#           legend.direction='horizontal', legend.position = c(0.43, 0.03),
+#           plot.background = element_blank(), panel.background = element_blank(),
+#           legend.background = element_blank(), legend.key  = element_blank(),
+#           title = element_text(size=14), plot.margin = margin(0,0,0,0),
+#           plot.tag.position = c(0.05,1)) + labs(tag = tag) +
+#     theme(text=element_text(family='Routed Gothic', colour='black'))
+# }
+# png(file=paste0('./fig/fig_01_map_ecoregions.png'),
+#     wid=6.5, hei=5.0, unit='in', bg='transparent', res=1080)
+# map_regions()
 # dev.off()
 
 ####    END    ####
