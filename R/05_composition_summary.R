@@ -52,7 +52,7 @@ mean(ds[,c('ci_rng')]) # 3.34 kg S ha y
 # png('./fig/fig_05_composition_boxplots.png',
 #     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 tiff('./fig/fig_05_composition_boxplots.tif',
-    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 dn$spprich_epimac[dn$spprich_epimac < 4] <- NA
 set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
 plot(x=factor(dn$spprich_epimac), y=dn$ci_rng,
@@ -163,16 +163,44 @@ ds <- usmap_transform(ds)                 # reproject
 # dev.off()
 
 ### --- Fig. 06 --- map of *composition* uncertainties
-png(file=paste0('./fig/fig_06_map_unc_composition.png'),
-    wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+# png(file=paste0('./fig/fig_06_map_unc_composition.png'),
+#     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
 tiff(file=paste0('./fig/fig_06_map_unc_composition.tif'),
-    wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
 set_par_mercury(1)
 grid.arrange(
   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),
   plot_map(ds, 'ci_rng', legtitle=slab, brk=seq(0,12,by=3)),
   nrow=2)
 dev.off()
+
+
+
+### graphical abstract image: TODO!
+p  <- plot_map(ds, 'ci_rng', legtitle='Critical load uncertainty',
+               brk=seq(0,15,by=5))
+xx <- ds$ci_rng
+xx <- data.frame(x=xx[xx > 0 & xx < 10]*0.5)
+sek <- seq(0,5,0.25)
+h  <- ggplot(xx) +
+  geom_bar(color='black', aes(x, fill=(..count..)^1.2), width=1) +
+  scale_x_binned(breaks=sek,
+                 # labels=sek,
+                 expand=c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_text(size=11)) +
+  # geom_vline(xintercept=2.7, color='cyan', size=2) +
+  labs(x='Critical load', y='Probability') +
+  scale_fill_viridis_c(begin=0.2, end=0.9) +
+  guides(fill='none')
+h
+#
+require(gridExtra)
+gridExtra::grid.arrange(p, h, nrow=1, ncol=2)
+
 
 
 # ### --- Fig. 1 --- maps of ecoregions
