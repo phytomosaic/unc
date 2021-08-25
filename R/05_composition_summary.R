@@ -52,7 +52,7 @@ mean(ds[,c('ci_rng')]) # 3.34 kg S ha y
 # png('./fig/fig_05_composition_boxplots.png',
 #     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 tiff('./fig/fig_05_composition_boxplots.tif',
-     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+     wid=6.5, hei=3.5, uni='in', bg='transparent', res=700, compr='lzw')
 dn$spprich_epimac[dn$spprich_epimac < 4] <- NA
 set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
 plot(x=factor(dn$spprich_epimac), y=dn$ci_rng,
@@ -166,7 +166,7 @@ ds <- usmap_transform(ds)                 # reproject
 # png(file=paste0('./fig/fig_06_map_unc_composition.png'),
 #     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
 tiff(file=paste0('./fig/fig_06_map_unc_composition.tif'),
-     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+     wid=5.0, hei=6.0, unit='in', bg='transparent', res=700, compr='lzw')
 set_par_mercury(1)
 grid.arrange(
   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),

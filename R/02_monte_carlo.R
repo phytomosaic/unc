@@ -124,7 +124,7 @@ s$ind   <- factor(s$ind, labels=LETTERS[1:length(mc)])
 # png('./fig/fig_02_bxplt_monte_carlo.png',
 #     wid=4, hei=4, units='in', bg='transparent', res=1080)
 tiff('./fig/fig_02_bxplt_monte_carlo.tif',
-     wid=4, hei=4, units='in', bg='transparent', res=1080)
+     wid=4, hei=4, units='in', bg='transparent', res=700, compr='lzw')
 set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
 ylab <- expression(Randomization~CLs~(kg~ha^-1~y^-1))
 bxplt(ylab=ylab, ylim=c(0,9.0), medlwd=1)
@@ -191,7 +191,7 @@ dev.off()
 # png('./fig/fig_01_monte_carlo_explanatory.png',
 #     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 tiff('./fig/fig_01_monte_carlo_explanatory.tif',
-     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+     wid=6.5, hei=3.5, uni='in', bg='transparent', res=700, compr='lzw')
 set_par_mercury(2, CEX=0.8)
 # monte carlo fitlines
 mc <- monte_carlo_plot(spprich_n_sens ~ poly(N, 2, raw = T), n=999) # ! TIMEWARN ! ! !
