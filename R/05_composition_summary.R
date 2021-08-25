@@ -48,8 +48,10 @@ slab <- expression(S~uncertainty~(kg~ha^-1~y^-1))
 mean(dn[,c('ci_rng')]) # 3.22 kg N ha y
 mean(ds[,c('ci_rng')]) # 3.34 kg S ha y
 
-### --- Fig. 03 --- boxplots of uncertainty vs richness
-png('./fig/fig_05_composition_boxplots.png',
+### --- Fig. 05 --- boxplots of uncertainty vs richness
+# png('./fig/fig_05_composition_boxplots.png',
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+tiff('./fig/fig_05_composition_boxplots.tif',
     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 dn$spprich_epimac[dn$spprich_epimac < 4] <- NA
 set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
@@ -163,7 +165,8 @@ ds <- usmap_transform(ds)                 # reproject
 ### --- Fig. 06 --- map of *composition* uncertainties
 png(file=paste0('./fig/fig_06_map_unc_composition.png'),
     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
-# wid=6.5, hei=7.5, unit='in', bg='transparent', res=1080)
+tiff(file=paste0('./fig/fig_06_map_unc_composition.tif'),
+    wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
 set_par_mercury(1)
 grid.arrange(
   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),

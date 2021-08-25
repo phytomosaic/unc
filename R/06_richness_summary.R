@@ -92,8 +92,10 @@ mean(ds$ci_rng_s20)    # 2.47 kg S ha y (at most generous 20 species) <-- USE TH
 
 
 ### --- Fig. 03 --- boxplots of uncertainty vs richness
-png('./fig/fig_03_richness_boxplots.png',
-    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+# png('./fig/fig_03_richness_boxplots.png',
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+tiff('./fig/fig_03_richness_boxplots.tif',
+     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
 boxplot(x = as.list(as.data.frame(ci_rng_n)), outcex=0.3, ylim=c(0,22),
         boxwex=0.4, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
@@ -107,8 +109,10 @@ dev.off()
 
 
 ### --- Fig. S1 --- Measurement error: at what richness does SEM cross MQO?
-png('./fig/fig_s1_MQO_richness.png',
-    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+# png('./fig/fig_s1_MQO_richness.png',
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+tiff('./fig/fig_s1_MQO_richness.tif',
+     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 set_par_mercury(2, mgp=c(1.3,0.2,0))
 matplot(t(se_n), type='l', xlab='Plot richness',
         ylab=expression('Standard error ('*kg~N~ha^-1~y^-1*')'),
@@ -239,8 +243,10 @@ grid.arrange(
     theme(text=element_text(family='Routed Gothic', colour='black'))
 }
 dn <- dn[!(dn$sr_margin > 40),]          # rm 12 outliers
-png(file=paste0('./fig/fig_04_map_richnessmargin.png'),
-    wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+# png(file=paste0('./fig/fig_04_map_richnessmargin.png'),
+#     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+tiff(file=paste0('./fig/fig_04_map_richnessmargin.tif'),
+     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
 grid.arrange(plot_map_diverg(dn, 'sr_margin', legtitle='Richness margin',
                              brk=c(-10,-5,0,5,10,40)),
              plot_map_diverg(ds, 'sr_margin',legtitle='Richness margin',

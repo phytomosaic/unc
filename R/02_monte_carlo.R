@@ -97,11 +97,11 @@ xs <- c(rep('N',4), rep('S',4))
 fmla_lst <- lapply(paste0(ys, '~ poly(', xs, ', 2, raw=T)'), as.formula)
 
 ### do the Monte Carlo resampling
-png('./fig/fig_99_monte_carlo_fitlines_trace.png',
-    wid=7.5, hei=3.85, uni='in', res=700, bg='transparent')
+# png('./fig/fig_99_monte_carlo_fitlines_trace.png',
+#     wid=7.5, hei=3.85, uni='in', res=1080, bg='transparent')
 set_par_mercury(8, mfrow=c(2,4))
 mc <- lapply(fmla_lst, function(i) { monte_carlo(i, n=99999) }) # ! TIMEWARN ! ! !
-dev.off()
+# dev.off()
 
 ### summary table
 (tab <- round(sapply(mc, `[[`, 1), 3))
@@ -121,8 +121,10 @@ s$ind   <- factor(s$ind, labels=LETTERS[1:length(mc)])
         pty='s', box.lty=1, mgp=c(CEX+1.4,0.4,0), tcl=-0.2, las=1, bty='L',
         cex=CEX, cex.lab=CEX*1.4, cex.axis=CEX*1.1, cex.main=CEX*2.4, ...)
 }
-png('./fig/fig_02_bxplt_monte_carlo.png',
-    wid=4, hei=4, units='in', bg='transparent', res=1080)
+# png('./fig/fig_02_bxplt_monte_carlo.png',
+#     wid=4, hei=4, units='in', bg='transparent', res=1080)
+tiff('./fig/fig_02_bxplt_monte_carlo.tif',
+     wid=4, hei=4, units='in', bg='transparent', res=1080)
 set_par_mercury(1, mar=c(3,4,0.5,0.5), oma=c(0.1,0.1,0,0))
 ylab <- expression(Randomization~CLs~(kg~ha^-1~y^-1))
 bxplt(ylab=ylab, ylim=c(0,9.0), medlwd=1)
@@ -186,8 +188,10 @@ dev.off()
    # output
    return(list(stats=c(CL_fitted=CL, ci, pval=pval, coefs=cx), CLs=CLs))
 }
-png('./fig/fig_01_monte_carlo_explanatory.png',
-    wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+# png('./fig/fig_01_monte_carlo_explanatory.png',
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+tiff('./fig/fig_01_monte_carlo_explanatory.tif',
+     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
 set_par_mercury(2, CEX=0.8)
 # monte carlo fitlines
 mc <- monte_carlo_plot(spprich_n_sens ~ poly(N, 2, raw = T), n=999) # ! TIMEWARN ! ! !
