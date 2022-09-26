@@ -93,9 +93,9 @@ mean(ds$ci_rng_s20)    # 2.47 kg S ha y (at most generous 20 species) <-- USE TH
 
 ### --- Fig. 03 --- boxplots of uncertainty vs richness
 # png('./fig/fig_03_richness_boxplots.png',
-#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='white')
 tiff('./fig/fig_03_richness_boxplots.tif',
-     wid=6.5, hei=3.5, uni='in', bg='transparent', res=700, compr='lzw')
+     wid=6.5, hei=3.5, uni='in', bg='white', res=700, compr='lzw')
 set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
 boxplot(x = as.list(as.data.frame(ci_rng_n)), outcex=0.3, ylim=c(0,22),
         boxwex=0.4, boxfill='#c1c1c1', outpch=16, outcol='#00000010',
@@ -110,9 +110,9 @@ dev.off()
 
 ### --- Fig. S1 --- Measurement error: at what richness does SEM cross MQO?
 # png('./fig/fig_s1_MQO_richness.png',
-#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='white')
 tiff('./fig/fig_s1_MQO_richness.tif',
-     wid=6.5, hei=3.5, uni='in', bg='transparent', res=700, compr='lzw')
+     wid=6.5, hei=3.5, uni='in', bg='white', res=700, compr='lzw')
 set_par_mercury(2, mgp=c(1.3,0.2,0))
 matplot(t(se_n), type='l', xlab='Plot richness',
         ylab=expression('Standard error ('*kg~N~ha^-1~y^-1*')'),
@@ -149,7 +149,7 @@ rm(mqo, ci_rng_n, ci_rng_s, se_n, se_s) # cleanup
 # }
 # ### boxplot uncertainties per region
 # png('./fig/fig_03_bxplt_unc_richness_by_region.png',
-#     wid=6.5, hei=4.75, units='in', bg='transparent', res=1080)
+#     wid=6.5, hei=4.75, units='in', bg='white', res=1080)
 # set_par_mercury(6, mar=c(3.1,3.1,0.5,0.5), oma=c(0,0,0,0))
 # # nitrogen
 # bxplt(dn, dn$ci_rng_n02, T, ylab='', ylim=c(0,15))
@@ -184,7 +184,8 @@ rm(mqo, ci_rng_n, ci_rng_s, se_n, se_s) # cleanup
 `plot_map` <- function(dn, zvar='ci_rng_n', legtitle='Title here', tag='',
                        dir=1, brk, transf='identity', ...) {
   plot_usmap(fill='lightgrey') +
-    geom_point(data=dn, aes_string(x = 'lon.1', y = 'lat.1', color = zvar), size=0.5) +
+    geom_point(data=dn, aes_string(x = 'x', y = 'y', color = zvar), size=0.5) +
+    # geom_point(data=dn, aes_string(x = 'lon.1', y = 'lat.1', color = zvar), size=0.5) +
     scale_color_viridis(name=legtitle, na.value='transparent',
                         option='D', direction=dir,
                         trans = transf, breaks = brk, labels = brk) +
@@ -211,7 +212,7 @@ ds <- ds[ds$state != 'Missouri',]         # rm another
 ds <- ds[rev(order(ds$sr_margin)),]       # order by species richness margin
 ds <- usmap_transform(ds)                 # reproject
 # png(file=paste0('./fig/fig_99_map_unc_richness.png'),
-#     wid=6.5, hei=5.0, unit='in', bg='transparent', res=1000)
+#     wid=6.5, hei=5.0, unit='in', bg='white', res=1000)
 set_par_mercury(1)
 grid.arrange(
   plot_map(dn, 'ci_rng_n20', legtitle=nlab, brk=c(0:5)),
@@ -224,7 +225,8 @@ grid.arrange(
 `plot_map_diverg` <- function(dn, zvar='sr_margin', legtitle='Richness margin',
                               tag='', dir=1, brk, transf='pseudo_log', ...) {
   plot_usmap(fill='grey90') +
-    geom_point(data=dn, aes_string(x='lon.1',y='lat.1',color=zvar), size=0.25) +
+    geom_point(data=dn, aes_string(x='x',y='y',color=zvar), size=0.25) +
+    # geom_point(data=dn, aes_string(x='lon.1',y='lat.1',color=zvar), size=0.25) +
     scale_colour_gradient2(name=legtitle, na.value='transparent',
                            trans=transf, breaks=brk, labels=brk, midpoint=0,
                            low='#FF0000', mid='#FFFFFF', high='#0000FF') +
@@ -244,9 +246,9 @@ grid.arrange(
 }
 dn <- dn[!(dn$sr_margin > 40),]          # rm 12 outliers
 # png(file=paste0('./fig/fig_04_map_richnessmargin.png'),
-#     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+#     wid=5.0, hei=6.0, unit='in', bg='white', res=1080)
 tiff(file=paste0('./fig/fig_04_map_richnessmargin.tif'),
-     wid=5.0, hei=6.0, unit='in', bg='transparent', res=700, compr='lzw')
+     wid=5.0, hei=6.0, unit='in', bg='white', res=300, compr='lzw')
 grid.arrange(plot_map_diverg(dn, 'sr_margin', legtitle='Richness margin',
                              brk=c(-10,-5,0,5,10,40)),
              plot_map_diverg(ds, 'sr_margin',legtitle='Richness margin',
