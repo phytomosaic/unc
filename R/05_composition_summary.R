@@ -8,6 +8,7 @@
 
 ### preamble
 rm(list=ls())
+# remotes::install_github('phytomosaic/ecole')
 require(ecole)
 require(scales)
 require(ggplot2)
@@ -50,9 +51,9 @@ mean(ds[,c('ci_rng')]) # 3.34 kg S ha y
 
 ### --- Fig. 05 --- boxplots of uncertainty vs richness
 # png('./fig/fig_05_composition_boxplots.png',
-#     wid=6.5, hei=3.5, uni='in', res=1080, bg='transparent')
+#     wid=6.5, hei=3.5, uni='in', res=1080, bg='white')
 tiff('./fig/fig_05_composition_boxplots.tif',
-     wid=6.5, hei=3.5, uni='in', bg='transparent', res=700, compr='lzw')
+     wid=6.5, hei=3.5, uni='in', bg='white', res=700, compr='lzw')
 dn$spprich_epimac[dn$spprich_epimac < 4] <- NA
 set_par_mercury(2, mgp=c(1.3,0.2,0), CEX=0.9)
 plot(x=factor(dn$spprich_epimac), y=dn$ci_rng,
@@ -113,7 +114,7 @@ dev.off()
 #
 # ### --- Fig. 05 --- boxplots of *composition* uncertainties, by region
 # png('./fig/fig_05_bxplt_unc_composition_by_region.png',
-#     wid=6.5, hei=3, units='in', bg='transparent', res=1080)
+#     wid=6.5, hei=3, units='in', bg='white', res=1080)
 # set_par_mercury(2, mar=c(3.1,3.1,0.1,0.1), oma=c(0,0,0,0))
 # bxplt(dn, dn, 'ci_rng', T, ylab=nlab, ylim=c(0,20), CEX=0.7)
 # legend('topleft', paste0(LETTERS[1:k], ' = ', grp),
@@ -127,7 +128,8 @@ dev.off()
 `plot_map` <- function(d, zvar='ci_rng', legtitle='Title here', tag='',
                        dir=1, brk, transf='identity', ...) {
   plot_usmap(fill='lightgrey') +
-    geom_point(data=d, aes_string(x='lon.1', y='lat.1', color=zvar), size=0.35) +
+    geom_point(data=d, aes_string(x='x', y='y', color=zvar), size=0.35) +
+    # geom_point(data=d, aes_string(x='lon.1', y='lat.1', color=zvar), size=0.35) +
     scale_color_viridis(name=legtitle, na.value='transparent', option='D',
                         direction=dir, trans=transf, breaks=brk, labels=brk) +
     guides(size='none',
@@ -154,7 +156,7 @@ dn <- usmap_transform(dn)                 # reproject
 ds <- usmap_transform(ds)                 # reproject
 # ### --- Fig. 06 --- map of *composition* uncertainties
 # png(file=paste0('./fig/fig_06_map_unc_composition_HORIZONTAL.png'),
-#     wid=6.5, hei=2.5, unit='in', bg='transparent', res=1080)
+#     wid=6.5, hei=2.5, unit='in', bg='white', res=1080)
 # set_par_mercury(1)
 # grid.arrange(
 #   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),
@@ -164,9 +166,9 @@ ds <- usmap_transform(ds)                 # reproject
 
 ### --- Fig. 06 --- map of *composition* uncertainties
 # png(file=paste0('./fig/fig_06_map_unc_composition.png'),
-#     wid=5.0, hei=6.0, unit='in', bg='transparent', res=1080)
+#     wid=5.0, hei=6.0, unit='in', bg='white', res=1080)
 tiff(file=paste0('./fig/fig_06_map_unc_composition.tif'),
-     wid=5.0, hei=6.0, unit='in', bg='transparent', res=700, compr='lzw')
+     wid=5.0, hei=6.0, unit='in', bg='white', res=300, compr='lzw')
 set_par_mercury(1)
 grid.arrange(
   plot_map(dn, 'ci_rng', legtitle=nlab, brk=seq(0,9,by=3)),
@@ -233,7 +235,7 @@ gridExtra::grid.arrange(p, h, nrow=1, ncol=2)
 #     theme(text=element_text(family='Routed Gothic', colour='black'))
 # }
 # png(file=paste0('./fig/fig_01_map_ecoregions.png'),
-#     wid=6.5, hei=5.0, unit='in', bg='transparent', res=1080)
+#     wid=6.5, hei=5.0, unit='in', bg='white', res=1080)
 # map_regions()
 # dev.off()
 
